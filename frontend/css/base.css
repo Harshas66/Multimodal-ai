@@ -1,0 +1,74 @@
+/*frontend/css/base.css*/
+:root {
+  --bg-main: #0b1022;
+  --bg-card: #11182f;
+  --bg-input: #1b2547;
+
+  --border: rgba(99,102,241,0.18);
+
+  --primary: #6366f1;
+  --primary-soft: rgba(99,102,241,0.18);
+
+  --text-main: #eaf1ff;
+  --text-muted: #9aa4c7;
+
+  --danger: #ef4444;
+  --warn: #f59e0b;
+  --success: #10b981;
+
+  --transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--text-main);
+  min-height: 100vh;
+  line-height: 1.55;
+
+  background:
+    radial-gradient(900px 500px at 15% -10%, rgba(99,102,241,0.28), transparent 60%),
+    radial-gradient(800px 500px at 85% 10%, rgba(236,72,153,0.18), transparent 60%),
+    radial-gradient(600px 400px at 50% 100%, rgba(34,211,238,0.16), transparent 70%),
+    linear-gradient(180deg, #050814 0%, #070c1f 45%, #02040d 100%);
+}
+
+button {
+  border: none;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+input, textarea {
+  font-family: inherit;
+}
+
+input:focus,
+textarea:focus,
+button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* LIGHT THEME */
+.light-theme {
+  --bg-main: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-input: #f1f5f9;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --border: #e2e8f0;
+}

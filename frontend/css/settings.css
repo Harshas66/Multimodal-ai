@@ -1,0 +1,100 @@
+/*frontend/css/settings.css*/
+@import url("./base.css");
+
+.settings-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.settings-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-card);
+  padding: 36px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+}
+
+/* Title */
+.settings-card h1 {
+  text-align: center;
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 32px;
+  color: var(--text-main);
+}
+
+/* Sections */
+.settings-section {
+  margin-bottom: 28px;
+}
+
+.settings-section h2 {
+  font-size: 18px;
+  margin-bottom: 14px;
+  color: var(--text-main);
+}
+
+/* Rows */
+.settings-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-item span {
+  font-size: 15px;
+  color: var(--text-main);
+}
+
+/* Inputs */
+.settings-item select {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--bg-input);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+}
+
+/* Buttons */
+.settings-card button {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  margin-top: 12px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: 0.2s ease;
+}
+
+.settings-card button:hover {
+  transform: translateY(-1px);
+  opacity: 0.95;
+}
+
+/* Button variants */
+.settings-card .secondary {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--text-main);
+}
+
+.settings-card .warn {
+  background: #f59e0b;
+  color: #111;
+}
+
+.settings-card .danger {
+  background: #ef4444;
+  color: #fff;
+}

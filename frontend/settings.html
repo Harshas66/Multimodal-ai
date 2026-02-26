@@ -1,0 +1,56 @@
+<!--frontend/settings.html-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Settings • Multimodal AI</title>
+  <link rel="stylesheet" href="css/settings.css">
+</head>
+<body>
+
+<div class="settings-wrapper">
+  <div class="settings-card">
+
+    <h1>Settings</h1>
+
+    <!-- Appearance -->
+    <div class="settings-section">
+      <h2>Appearance</h2>
+      <div class="settings-item">
+        <span>Theme</span>
+        <button class="secondary" onclick="toggleTheme()">Toggle Dark / Light</button>
+      </div>
+    </div>
+
+    <!-- Language -->
+    <div class="settings-section">
+      <h2>Language</h2>
+      <div class="settings-item">
+        <span>Select language</span>
+        <select onchange="changeLanguage(this.value)">
+          <option value="en">English</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Account -->
+    <div class="settings-section">
+      <h2>Account</h2>
+
+      <button onclick="window.location.href='archived.html'">Archive Chats</button>
+      <button class="danger" onclick="deleteAccount()">Delete Account</button>
+      <button class="secondary" onclick="logout()">Logout</button>
+      <button onclick="clearPersonal()">Clear Personal Info</button>
+</body>
+</html>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/settings.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+<svg width="400" height="120" xmlns="http://www.w3.org/2000/svg">
+ <defs>
+  <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%">
+   <stop offset="0%" stop-color="#00BFFF"></stop>
+   <stop offset="100%" stop-color="#00FFFF"></stop>
+  </linearGradient>
+ </defs>
+ <rect rx="18" ry="18" width="400" height="120" fill="#1A1A40"></rect>
+ <g transform="translate(20,10)">
+  <polygon points="40,10 80,30 80,70 40,90 0,70 0,30" fill="url(#g1)"></polygon>
+  <text x="110" y="60" font-family="Arial" font-size="28" fill="#ffffff">Multimodal AI</text>
+  <text x="110" y="90" font-family="Arial" font-size="12" fill="#bfc9ff">
+    Memory · Multilingual · Multi-Agent
+  </text>
+ </g>
+</svg>

@@ -1,0 +1,110 @@
+<!--frontend/chat.html-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Multimodal AI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="stylesheet" href="css/chat.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDiE2DdWfQley8l88Jv2vwsq0OraWjSSJ4",
+    authDomain: "silver-agility-475306-r0.firebaseapp.com",
+    projectId: "silver-agility-475306-r0",
+    storageBucket: "silver-agility-475306-r0.firebasestorage.app",
+    messagingSenderId: "1089444754253",
+    appId: "1:1089444754253:web:3b06d8e76536dfbae67d04"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  window.firebaseAuth = auth;
+</script>
+
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- ================= SIDEBAR ================= -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>Chats</h2>
+        <button class="collapse-btn" id="collapseSidebar">≡</button>
+      </div>
+
+      <div class="chat-search">
+        <input type="text" placeholder="Search chats..." />
+      </div>
+
+      <!-- CHAT LIST -->
+      <div id="chatList" class="chat-list"></div>
+
+      <!-- ACTION BUTTONS -->
+      <button id="newChat" class="new-chat-btn">+ New Chat</button>
+
+      <!-- ✅ ARCHIVED BUTTON (CORRECT PLACE) -->
+      <button class="new-chat-btn" onclick="showArchived()">📦 Archived</button>
+
+      <a href="settings.html" class="settings-link">⚙ Settings</a>
+    </aside>
+
+    <!-- ================= CHAT AREA ================= -->
+    <main class="chat-area">
+
+      <!-- Title -->
+      <div class="floating-title">
+        <header>
+          <h1>Multimodal AI</h1>
+          <p>Memory · Context · Intelligence</p>
+        </header>
+      </div>
+
+      <!-- Hidden Image Input -->
+      <input
+        type="file"
+        id="imageInput"
+        accept="image/*"
+        hidden
+      />
+
+      <!-- MESSAGES -->
+      <div id="chatBox" class="chat-box"></div>
+
+      <!-- ================= INPUT BAR ================= -->
+      <div class="chat-input-wrapper">
+        <button id="plusBtn" class="input-btn">+</button>
+        <textarea id="userInput" placeholder="Ask anything..." rows="1"></textarea>
+        <button id="micBtn" class="input-btn">🎤</button>
+        <button id="sendBtn" class="input-btn send">➤</button>
+      </div>
+
+      <!-- + MENU -->
+      <div id="optionsMenu" class="options-menu hidden">
+        <button id="uploadImageBtn" class="option-item">🖼 Upload image</button>
+      </div>
+
+      <!-- IMAGE PREVIEW -->
+      <div id="preview" class="preview hidden">
+        <img id="previewImg" alt="Preview" />
+        <button id="cancelPreview">×</button>
+      </div>
+
+      <!-- FOOTER -->
+      <footer>
+        Powered by <strong>LLaMA 3.1</strong>
+      </footer>
+
+    </main>
+  </div>
+
+  <script src="js/chat.js"></script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+# Virtual Environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment variables
+.env
+
+# OS files
+.DS_Store
+
+# Large model files (if any)
+*.pt
+*.pth
+*.bin
+
+# Secrets
+backend/core/firebase-service-account.json
+firebaseauthcode.txt
+
+# Memory & user data
+memory/
+*.json
+
+# Node
+node_modules/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+.env
