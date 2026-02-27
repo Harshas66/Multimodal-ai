@@ -1,4 +1,4 @@
-<!--frontend/index.html-->
+<!--frontend/index.html - Modern Login Page-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,42 +6,109 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login • Multimodal AI</title>
   <link rel="stylesheet" href="css/auth.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<div class="auth-wrapper">
-  <div class="auth-card">
-    <div class="auth-logo">
+<div class="auth-container">
+  <!-- Left Side - Branding -->
+  <div class="auth-branding">
+    <div class="brand-content">
+      <div class="brand-logo">
+        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+          <rect width="80" height="80" rx="16" fill="#6366f1" opacity="0.1"/>
+          <path d="M40 20L55 35L40 50L25 35Z" fill="#6366f1" stroke="#6366f1" stroke-width="2"/>
+          <circle cx="40" cy="40" r="25" fill="none" stroke="#6366f1" stroke-width="2" opacity="0.5"/>
+        </svg>
+      </div>
       <h1>Multimodal AI</h1>
+      <p>Advanced Intelligence Engine</p>
+      
+      <div class="features">
+        <div class="feature">
+          <span class="feature-icon">🧠</span>
+          <span>Smart Processing</span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon">🖼️</span>
+          <span>Image Analysis</span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon">🎙️</span>
+          <span>Voice Support</span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon">⚡</span>
+          <span>Lightning Fast</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side - Login Form -->
+  <div class="auth-form-container">
+    <div class="form-card">
+      <div class="form-header">
+        <h2>Welcome Back</h2>
+        <p>Sign in to your account to continue</p>
+      </div>
+
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input 
+            type="email" 
+            id="email" 
+            placeholder="you@example.com" 
+            required
+            autofocus
+          >
+          <span class="error-message" id="emailError"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="password-input-wrapper">
+            <input 
+              type="password" 
+              id="password" 
+              placeholder="••••••••" 
+              required
+            >
+            <button type="button" class="toggle-password" onclick="togglePasswordVisibility()">
+              👁️
+            </button>
+          </div>
+          <span class="error-message" id="passwordError"></span>
+        </div>
+
+        <a href="#" class="forgot-password" onclick="handleForgotPassword(event)">Forgot password?</a>
+
+        <button type="submit" class="btn-primary">Sign In</button>
+      </form>
+
+      <div class="divider">or</div>
+
+      <button onclick="handleGoogleLogin()" class="btn-google">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+        </svg>
+        Continue with Google
+      </button>
+
+      <div class="auth-footer">
+        <p>Don't have an account? <a href="signup.html" class="auth-link">Create one</a></p>
+      </div>
     </div>
 
-    <div class="form-group">
-      <input id="email" type="email" placeholder=" " required>
-      <label for="email">Email address</label>
-    </div>
-
-    <div class="form-group">
-      <input id="password" type="password" placeholder=" " required>
-      <label for="password">Password</label>
-    </div>
-
-
-    
-    <p><a href="#" onclick="resetPassword()">Forgot Password?</a></p>
-
-    <button onclick="login()">Sign in</button>
-
-    <button onclick="googleLogin()" class="google-btn">Continue with Google</button>
-
-
-    <div class="auth-footer">
-      Don't have an account? <a href="signup.html">Sign up</a>
+    <div class="loading-spinner" id="loadingSpinner" style="display: none;">
+      <div class="spinner"></div>
     </div>
   </div>
 </div>
 
-<script type="module" src="js/auth.js"></script>
 
+
+<script type="module" src="js/auth.js"></script>
 </body>
 </html>

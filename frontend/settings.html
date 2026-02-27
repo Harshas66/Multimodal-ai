@@ -1,4 +1,4 @@
-<!--frontend/settings.html-->
+<!--frontend/settings.html - Modern Settings Page-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,48 +6,341 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Settings • Multimodal AI</title>
   <link rel="stylesheet" href="css/settings.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<div class="settings-wrapper">
-  <div class="settings-card">
-
-    <h1>Settings</h1>
-
-    <!-- Appearance -->
-    <div class="settings-section">
-      <h2>Appearance</h2>
-      <div class="settings-item">
-        <span>Theme</span>
-        <button class="secondary" onclick="toggleTheme()">Toggle Dark / Light</button>
-      </div>
+<div class="settings-container">
+  <!-- Header -->
+  <div class="settings-header">
+    <div class="header-content">
+      <a href="chat.html" class="back-button">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to Chat
+      </a>
+      <h1>Settings</h1>
+      <p>Manage your AI preferences and account</p>
     </div>
+  </div>
 
-    <!-- Language -->
-    <div class="settings-section">
-      <h2>Language</h2>
-      <div class="settings-item">
-        <span>Select language</span>
-        <select onchange="changeLanguage(this.value)">
-          <option value="en">English</option>
-          <option value="es">Spanish</option>
-          <option value="fr">French</option>
-        </select>
-      </div>
-    </div>
+  <!-- Settings Layout -->
+  <div class="settings-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="settings-sidebar">
+      <nav class="settings-nav">
+        <div class="nav-section">
+          <h3>AI & Models</h3>
+          <button class="nav-item active" data-section="models">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+              <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+            AI Models
+          </button>
+          <button class="nav-item" data-section="parameters">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <circle cx="12" cy="12" r="1"></circle>
+              <circle cx="19" cy="12" r="1"></circle>
+              <circle cx="5" cy="12" r="1"></circle>
+            </svg>
+            Parameters
+          </button>
+          <button class="nav-item" data-section="features">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M12 2v20m10-10H2M7 7l10-10m0 20L7 7m10 10l10 10m-20 0l10-10"></path>
+            </svg>
+            Features
+          </button>
+        </div>
 
-    <!-- Account -->
-    <div class="settings-section">
-      <h2>Account</h2>
+        <div class="nav-section">
+          <h3>Data & Privacy</h3>
+          <button class="nav-item" data-section="storage">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+              <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+            Data Management
+          </button>
+          <button class="nav-item" data-section="privacy">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            Privacy
+          </button>
+        </div>
 
-      <button onclick="window.location.href='archived.html'">Archive Chats</button>
-      <button class="danger" onclick="deleteAccount()">Delete Account</button>
-      <button class="secondary" onclick="logout()">Logout</button>
-      <button onclick="clearPersonal()">Clear Personal Info</button>
-</body>
-</html>
-    </div>
+        <div class="nav-section">
+          <h3>Account</h3>
+          <button class="nav-item" data-section="account">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            Account Info
+          </button>
+        </div>
+      </nav>
+    </aside>
 
+    <!-- Settings Content -->
+    <main class="settings-content">
+      <!-- AI Models Section -->
+      <section class="settings-section active" id="models">
+        <div class="section-header">
+          <h2>AI Models</h2>
+          <p>Select and configure your preferred AI model</p>
+        </div>
+
+        <div class="setting-card">
+          <label class="setting-label">Active Model</label>
+          <select id="modelSelect" class="setting-select">
+            <option value="llama">LLaMA 3.1 (Recommended)</option>
+            <option value="gemini">Google Gemini</option>
+            <option value="gpt">OpenAI GPT-3.5</option>
+          </select>
+          <p class="setting-help">LLaMA 3.1 provides excellent performance across text, image, and voice tasks</p>
+        </div>
+
+        <div class="models-grid">
+          <div class="model-card">
+            <div class="model-icon">🦙</div>
+            <h4>LLaMA 3.1</h4>
+            <p>Advanced language model from Meta</p>
+            <span class="model-badge active">Active</span>
+          </div>
+          <div class="model-card">
+            <div class="model-icon">🔍</div>
+            <h4>Google Gemini</h4>
+            <p>Multimodal AI from Google</p>
+            <span class="model-badge">Available</span>
+          </div>
+          <div class="model-card">
+            <div class="model-icon">⚡</div>
+            <h4>OpenAI GPT</h4>
+            <p>GPT-3.5 Turbo model</p>
+            <span class="model-badge">Available</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Parameters Section -->
+      <section class="settings-section" id="parameters">
+        <div class="section-header">
+          <h2>Model Parameters</h2>
+          <p>Fine-tune how the AI responds to your queries</p>
+        </div>
+
+        <div class="setting-card">
+          <label class="setting-label">
+            Temperature
+            <span class="setting-value" id="tempValueDisplay">0.7</span>
+          </label>
+          <input 
+            type="range" 
+            id="temperature" 
+            min="0" 
+            max="1" 
+            step="0.1" 
+            value="0.7"
+            class="setting-slider"
+            onchange="updateTempValue(this.value)"
+          />
+          <div class="slider-labels">
+            <span>Focused</span>
+            <span>Balanced</span>
+            <span>Creative</span>
+          </div>
+          <p class="setting-help">Lower values make output more focused, higher values more creative and diverse</p>
+        </div>
+
+        <div class="setting-card">
+          <label class="setting-label">
+            Max Tokens
+            <span class="setting-value" id="tokensValueDisplay">512</span>
+          </label>
+          <input 
+            type="range" 
+            id="maxTokens" 
+            min="64" 
+            max="2048" 
+            step="64" 
+            value="512"
+            class="setting-slider"
+            onchange="updateTokensValue(this.value)"
+          />
+          <p class="setting-help">Maximum length of AI responses (1 token ≈ 4 characters)</p>
+        </div>
+
+        <div class="setting-card">
+          <label class="setting-label">
+            Top-P (Nucleus Sampling)
+            <span class="setting-value" id="topPValueDisplay">0.9</span>
+          </label>
+          <input 
+            type="range" 
+            id="topP" 
+            min="0" 
+            max="1" 
+            step="0.05" 
+            value="0.9"
+            class="setting-slider"
+            onchange="updateTopPValue(this.value)"
+          />
+          <p class="setting-help">Controls diversity in token selection (0.9 recommended)</p>
+        </div>
+      </section>
+
+      <!-- Features Section -->
+      <section class="settings-section" id="features">
+        <div class="section-header">
+          <h2>Features</h2>
+          <p>Enable or disable specific AI capabilities</p>
+        </div>
+
+        <div class="toggle-card">
+          <div class="toggle-info">
+            <h4>Image Analysis</h4>
+            <p>Analyze and describe images using vision models</p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" checked onchange="toggleFeature('imageAnalysis', this.checked)">
+            <span></span>
+          </label>
+        </div>
+
+        <div class="toggle-card">
+          <div class="toggle-info">
+            <h4>Voice Input</h4>
+            <p>Transcribe voice commands and queries</p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" checked onchange="toggleFeature('voiceInput', this.checked)">
+            <span></span>
+          </label>
+        </div>
+
+        <div class="toggle-card">
+          <div class="toggle-info">
+            <h4>Voice Output</h4>
+            <p>Synthesize AI responses as audio</p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" checked onchange="toggleFeature('voiceOutput', this.checked)">
+            <span></span>
+          </label>
+        </div>
+
+        <div class="toggle-card">
+          <div class="toggle-info">
+            <h4>Auto-Save Chats</h4>
+            <p>Automatically save conversation history</p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" checked onchange="toggleFeature('autoSave', this.checked)">
+            <span></span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Storage Section -->
+      <section class="settings-section" id="storage">
+        <div class="section-header">
+          <h2>Data Management</h2>
+          <p>Manage your stored data and conversations</p>
+        </div>
+
+        <div class="storage-card">
+          <div class="storage-info">
+            <h4>Total Storage Used</h4>
+            <p class="storage-size" id="storageSize">Loading...</p>
+          </div>
+          <div class="storage-bar">
+            <div class="storage-fill" style="width: 35%"></div>
+          </div>
+          <p class="storage-help">35% of available storage</p>
+        </div>
+
+        <div class="action-card">
+          <h4>Chat History</h4>
+          <p>Manage your saved conversations</p>
+          <div class="action-buttons">
+            <button class="btn-secondary" onclick="exportAllChats()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Export All
+            </button>
+            <button class="btn-danger" onclick="clearAllChats()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+              Clear All
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Privacy Section -->
+      <section class="settings-section" id="privacy">
+        <div class="section-header">
+          <h2>Privacy Settings</h2>
+          <p>Control how your data is used and stored</p>
+        </div>
+
+        <div class="toggle-card">
+          <div class="toggle-info">
+            <h4>Analytics</h4>
+            <p>Help us improve by sending usage analytics</p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" checked onchange="toggleFeature('analytics', this.checked)">
+            <span></span>
+          </label>
+        </div>
+
+        <div class="info-card">
+          <h4>Data Retention</h4>
+          <p>Your conversations are stored securely and retained indefinitely unless you delete them manually.</p>
+        </div>
+      </section>
+
+      <!-- Account Section -->
+      <section class="settings-section" id="account">
+        <div class="section-header">
+          <h2>Account Information</h2>
+          <p>Manage your account details</p>
+        </div>
+
+        <div class="info-card">
+          <div class="info-row">
+            <span>Email</span>
+            <strong id="accountEmail">user@example.com</strong>
+          </div>
+          <div class="info-row">
+            <span>Account Created</span>
+            <strong id="accountCreated">January 15, 2024</strong>
+          </div>
+          <div class="info-row">
+            <span>Total Chats</span>
+            <strong id="totalChats">0</strong>
+          </div>
+        </div>
+
+        <div class="danger-zone">
+          <h4>Danger Zone</h4>
+          <p>Irreversible actions</p>
+          <button class="btn-danger-large" onclick="deleteAccount()">Delete Account</button>
+        </div>
+      </section>
+    </main>
   </div>
 </div>
 

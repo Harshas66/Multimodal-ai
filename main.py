@@ -1,4 +1,4 @@
-from utils.env_loader import load_env
+from backend.utils.env_loader import load_env
 load_env()  # ensures all API keys load globally
 
 
@@ -6,7 +6,7 @@ import streamlit as st
 import os, base64, datetime, getpass, sounddevice as sd, time
 from backend.agents.head_agent import HeadAgent
 from memory.memory_manager import MemoryManager
-from utils.speech_to_text import listen_once
+from backend.utils.speech_to_text import listen_once
 
 # ---------------------------------------------------------
 # 🌐 PAGE CONFIG
@@ -19,7 +19,7 @@ st.set_page_config(page_title="Multimodal AI Assistant", layout="wide")
 if "agent" not in st.session_state:
     st.session_state.agent = HeadAgent()
 if "memory" not in st.session_state:
-    st.session_state.memory = MemoryManager(max_length=10)
+    st.session_state.memory = MemoryManager()
 if "chat" not in st.session_state:
     st.session_state.chat = []
 if "typing" not in st.session_state:
