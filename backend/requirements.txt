@@ -1,14 +1,7 @@
-#backend/requirement.txt
-flask
-transformers
-torch
-bitsandbytes
-accelerate
-sentencepiece
-huggingface_hub
-python-dotenv
-requests
 fastapi
 uvicorn
 python-dotenv
 requests
+firebase-admin
+PyJWT
+psycopg[binary]

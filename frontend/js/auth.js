@@ -1,222 +1,128 @@
-/* ===== MODERN AUTHENTICATION ===== */
-
 import { auth, googleProvider, signInWithPopup } from "./firebase.js";
 
-const API = "http://127.0.0.1:8000";
+/* ---------------- API URL DETECTION ---------------- */
 
-/* ============================= */
-/* PASSWORD TOGGLE FUNCTIONS     */
-/* ============================= */
+const API = (() => {
 
-function togglePasswordVisibility() {
-  const input = document.getElementById("password");
-  if (input) {
-    input.type = input.type === "password" ? "text" : "password";
+  if (window.API_ENDPOINT) return window.API_ENDPOINT;
+
+  const stored = localStorage.getItem("apiEndpoint");
+  if (stored) return stored;
+
+  if (["localhost", "127.0.0.1"].includes(window.location.hostname)) {
+    return "http://127.0.0.1:8000";
   }
-}
 
-function toggleConfirmPasswordVisibility() {
-  const input = document.getElementById("confirm-password");
-  if (input) {
-    input.type = input.type === "password" ? "text" : "password";
-  }
-}
+  return window.location.origin;
 
-/* ============================= */
-/* LOGIN                         */
-/* ============================= */
+})();
 
-async function handleLogin(event) {
-  event.preventDefault();
+/* ---------------- GOOGLE AUTH ---------------- */
 
-  const email = document.getElementById("email")?.value.trim();
-  const password = document.getElementById("password")?.value;
-
-  if (!email || !password) {
-    alert("Please fill in all fields");
-    return;
-  }
+async function authenticateWithGoogle() {
 
   showLoader();
 
   try {
-    const response = await fetch(`${API}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password })
-    });
 
-    const data = await response.json();
+    console.log("Starting Google authentication...");
 
-    if (!response.ok) {
-      showError("email", data.detail || "Invalid email or password");
-      hideLoader();
-      return;
+    if (!auth) {
+      throw new Error("Firebase authentication not initialized.");
     }
-
-    localStorage.setItem("token", data.access_token);
-    localStorage.setItem("user", JSON.stringify(data.user));
-
-    window.location.href = "chat.html";
-
-  } catch (error) {
-    console.error("Login error:", error);
-    showError("email", "Connection error. Please try again.");
-    hideLoader();
-  }
-}
-
-/* ============================= */
-/* SIGNUP                        */
-/* ============================= */
-
-async function handleSignup(event) {
-  event.preventDefault();
-
-  const name = document.getElementById("name")?.value.trim();
-  const email = document.getElementById("email")?.value.trim();
-  const password = document.getElementById("password")?.value;
-  const confirmPassword = document.getElementById("confirm-password")?.value;
-
-  if (!name || !email || !password || !confirmPassword) {
-    alert("Please fill in all fields");
-    return;
-  }
-
-  if (password.length < 8) {
-    showError("password", "Password must be at least 8 characters");
-    return;
-  }
-
-  if (password !== confirmPassword) {
-    showError("confirm", "Passwords do not match");
-    return;
-  }
-
-  showLoader();
-
-  try {
-    const response = await fetch(`${API}/api/auth/signup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      showError("email", data.detail || "Signup failed");
-      hideLoader();
-      return;
-    }
-
-    alert("Account created successfully!");
-    window.location.href = "index.html";
-
-  } catch (error) {
-    console.error("Signup error:", error);
-    showError("email", "Connection error. Please try again.");
-    hideLoader();
-  }
-}
-
-/* ============================= */
-/* GOOGLE AUTH                   */
-/* ============================= */
-
-async function handleGoogleLogin() {
-  try {
+    
+    console.log("Opening Google popup...");
     const result = await signInWithPopup(auth, googleProvider);
 
-    localStorage.setItem("token", result.user.accessToken);
-    localStorage.setItem("user", JSON.stringify({
-      email: result.user.email,
-      name: result.user.displayName
-    }));
+    const user = result.user;
+
+    if (!user) {
+      throw new Error("Google authentication failed.");
+    }
+
+    const token = await user.getIdToken();
+
+    /* ---------- STORE AUTH DATA ---------- */
+
+    localStorage.setItem("token", token);
+
+    localStorage.setItem(
+      "user",
+      JSON.stringify({
+        id: user.uid,
+        name: user.displayName || "",
+        email: user.email || "",
+        provider: "google"
+      })
+    );
+
+    localStorage.setItem("authProvider", "google");
+
+    /* ---------- BACKEND AUTH ---------- */
+
+    const response = await fetch(`${API}/api/auth/google`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ id_token: token })
+    });
+
+    if (!response.ok) {
+
+      const data = await response.json().catch(() => ({}));
+
+      console.error("Backend authentication error:", data);
+
+      throw new Error(data.detail || "Backend authentication failed");
+
+    }
+
+    console.log("Authentication successful");
+
+    /* ---------- REDIRECT ---------- */
 
     window.location.href = "chat.html";
 
   } catch (error) {
-    console.error("Google login error:", error);
-    alert(error.message);
-  }
-}
 
-async function handleGoogleSignup() {
-  await handleGoogleLogin();
-}
+    console.error("Google Auth Error:", error);
 
-/* ============================= */
-/* FORGOT PASSWORD               */
-/* ============================= */
+    alert(error.message || "Unable to continue with Google");
 
-async function handleForgotPassword(event) {
-  event.preventDefault();
+  } finally {
 
-  const email = document.getElementById("email")?.value.trim();
+    hideLoader();
 
-  if (!email) {
-    alert("Please enter your email address");
-    return;
   }
 
-  try {
-    const response = await fetch(`${API}/api/auth/forgot-password`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email })
-    });
-
-    if (response.ok) {
-      alert("Password reset link sent to your email");
-    } else {
-      alert("Email not found");
-    }
-
-  } catch (error) {
-    console.error("Forgot password error:", error);
-    alert("Connection error. Please try again.");
-  }
 }
 
-/* ============================= */
-/* HELPER FUNCTIONS              */
-/* ============================= */
+/* ---------------- LOADER ---------------- */
 
 function showLoader() {
+
   const loader = document.getElementById("loadingSpinner");
+
   if (loader) loader.style.display = "flex";
+
 }
 
 function hideLoader() {
+
   const loader = document.getElementById("loadingSpinner");
+
   if (loader) loader.style.display = "none";
+
 }
 
-function showError(fieldId, message) {
-  const errorEl = document.getElementById(`${fieldId}Error`);
-  if (errorEl) {
-    errorEl.textContent = message;
-    errorEl.classList.add("show");
-  }
-}
+/**/
+document.addEventListener("DOMContentLoaded", () => {
 
-function clearError(fieldId) {
-  const errorEl = document.getElementById(`${fieldId}Error`);
-  if (errorEl) {
-    errorEl.textContent = "";
-    errorEl.classList.remove("show");
-  }
-}
+  const googleButtons = document.querySelectorAll("#googleLoginBtn");
 
-/* ============================= */
-/* MAKE FUNCTIONS GLOBAL         */
-/* ============================= */
+  googleButtons.forEach(btn => {
+    btn.addEventListener("click", authenticateWithGoogle);
+  });
 
-window.handleLogin = handleLogin;
-window.handleSignup = handleSignup;
-window.handleGoogleLogin = handleGoogleLogin;
-window.handleGoogleSignup = handleGoogleSignup;
-window.handleForgotPassword = handleForgotPassword;
-window.togglePasswordVisibility = togglePasswordVisibility;
-window.toggleConfirmPasswordVisibility = toggleConfirmPasswordVisibility;
+});

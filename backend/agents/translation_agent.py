@@ -1,11 +1,6 @@
 #backend/agents/translation_agent.py
 # using googletrans-temp safe fork
-from googletrans import Translator
-translator = Translator()
+from deep_translator import GoogleTranslator
 
-def handle(text, dest='en'):
-    try:
-        res = translator.translate(text, dest=dest)
-        return res.text
-    except Exception:
-        return "Translation service unavailable."
+def handle(text, target="en"):
+    return GoogleTranslator(source="auto", target=target).translate(text)

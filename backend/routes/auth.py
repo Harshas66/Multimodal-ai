@@ -1,83 +1,89 @@
-# backend/routes/auth.py
-from fastapi import APIRouter, HTTPException
+#backend/routes/auth.py
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-import json
-import os
-from fastapi import Depends, Header
-from backend.auth import require_user
+from backend.core.firebase_admin import verify_token, init_firebase
+from backend.security import require_user
+from memory.repository import repo
 
 router = APIRouter()
 
-# Persist users across server restarts (very important for testing!)
-DB_FILE = "fake_users.json"
 
-def load_users():
-    if os.path.exists(DB_FILE):
-        try:
-            with open(DB_FILE, "r") as f:
-                data = json.load(f)
-                print(f"[DB] Loaded {len(data)} users from file")
-                return data
-        except Exception as e:
-            print(f"[DB ERROR] Failed to load {DB_FILE}: {e}")
-    print("[DB] Starting with empty user database")
-    return {}
+class GoogleAuthRequest(BaseModel):
+    id_token: str
 
-def save_users(users):
+
+def _uid(decoded: dict) -> str:
+    return decoded.get("uid") or decoded.get("sub") or ""
+
+
+@router.post("/google")
+def google_login(payload: GoogleAuthRequest):
     try:
-        with open(DB_FILE, "w") as f:
-            json.dump(users, f, indent=2)
-        print(f"[DB] Saved {len(users)} users to file")
-    except Exception as e:
-        print(f"[DB ERROR] Failed to save {DB_FILE}: {e}")
+        init_firebase()
+        decoded = verify_token(payload.id_token)
+    except Exception as exc:
+        print("GOOGLE AUTH ERROR:", exc)
+        raise HTTPException(status_code=401, detail=str(exc))
 
-fake_users_db = load_users()
+    provider = (decoded.get("firebase") or {}).get("sign_in_provider")
+    if provider != "google.com":
+        raise HTTPException(status_code=403, detail="Only Google OAuth is allowed")
 
-class LoginRequest(BaseModel):
-    email: str
-    password: str
+    user_id = _uid(decoded)
+    email = decoded.get("email")
+    name = decoded.get("name") or (email.split("@")[0] if email else "User")
 
-class SignupRequest(BaseModel):
-    name: str
-    email: str
-    password: str
+    if not user_id or not email:
+        raise HTTPException(status_code=400, detail="Google profile is missing required fields")
 
-@router.post("/signup")
-async def signup(request: SignupRequest):
-    email = request.email.strip().lower()  # normalize: remove spaces + lowercase
-    print(f"[SIGNUP] Request received for email: '{email}' (original: '{request.email}')")
+    user = repo.upsert_user(user_id=user_id, name=name, email=email, provider="google")
 
-    if email in fake_users_db:
-        print(f"[SIGNUP] Email already exists: {email}")
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-    fake_users_db[email] = {
-        "name": request.name.strip(),
-        "password": request.password
+    return {
+        "access_token": payload.id_token,
+        "token_type": "bearer",
+        "user": user,
+        "session": {
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "provider": "google",
+        },
     }
-    save_users(fake_users_db)
-    print(f"[SIGNUP] SUCCESS - User created: {email} | Current users: {list(fake_users_db.keys())}")
 
-    return {"message": "User created successfully"}
 
-@router.post("/login")
-async def login(request: LoginRequest):
-    email = request.email.strip().lower()  # same normalization
-    print(f"[LOGIN] Attempting login for: '{email}' (original: '{request.email}')")
-    print(f"[LOGIN] Current users in DB: {list(fake_users_db.keys())}")
+@router.get("/session")
+def session(current_user=Depends(require_user)):
+    user_id = _uid(current_user)
+    users = repo.export_user_data(user_id=user_id)
+    return {
+        "user_id": user_id,
+        "email": current_user.get("email", ""),
+        "chat_count": len(users.get("chats", [])),
+    }
 
-    if email not in fake_users_db:
-        print(f"[LOGIN] FAIL - User not found: {email}")
-        raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    user = fake_users_db[email]
-    password_match = user["password"] == request.password
-    print(f"[LOGIN] Password check for {email}: match = {password_match}")
+@router.get("/profile")
+def profile(current_user=Depends(require_user)):
+    user_id = _uid(current_user)
+    user = repo.get_user(user_id=user_id)
+    data = repo.export_user_data(user_id=user_id)
+    return {
+        "user_id": user_id,
+        "name": user.get("name", ""),
+        "email": user.get("email", current_user.get("email", "")),
+        "provider": user.get("provider", "google"),
+        "created_at": user.get("created_at"),
+        "chat_count": len(data.get("chats", [])),
+    }
 
-    if not password_match:
-        print(f"[LOGIN] FAIL - Password mismatch for {email}")
-        raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    print(f"[LOGIN] SUCCESS for {email}")
-    return {"token": f"fake-jwt-{email}"}
+@router.post("/logout")
+def logout(_: dict = Depends(require_user)):
+    return {"message": "Logged out"}
 
+
+@router.delete("/delete-account")
+def delete_account(current_user=Depends(require_user)):
+    user_id = _uid(current_user)
+    repo.delete_user(user_id=user_id)
+    return {"message": "Account deleted"}

@@ -1,5 +1,5 @@
 #backend/core/firebase_admin.py
-from fastapi import Header, HTTPException
+'''from fastapi import Header, HTTPException
 import firebase_admin
 from firebase_admin import credentials, auth
 import os
@@ -9,7 +9,7 @@ if not firebase_admin._apps:
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     SERVICE_ACCOUNT_PATH = os.path.join(BASE_DIR, "firebase-service-account.json")
 
-    cred = credentials.Certificate(SERVICE_ACCOUNT_PATH)
+    cred = credentials.Certificate("firebase-service-account.json")
     firebase_admin.initialize_app(cred)
 
 
@@ -29,4 +29,31 @@ def verify_firebase_token(Authorization: str = Header(None)):
 
     except Exception as e:
         print("TOKEN ERROR:", e)
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+        raise HTTPException(status_code=401, detail="Invalid or expired token")'''
+        
+        
+
+# backend/core/firebase_admin.py
+
+import firebase_admin
+from firebase_admin import credentials, auth
+import os
+
+
+def init_firebase():
+
+    if not firebase_admin._apps:
+
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        key_path = os.path.join(base_dir, "firebase-service-account.json")
+
+        cred = credentials.Certificate(key_path)
+
+        firebase_admin.initialize_app(cred)
+
+
+def verify_token(token: str):
+
+    decoded_token = auth.verify_id_token(token)
+
+    return decoded_token

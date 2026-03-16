@@ -1,247 +1,205 @@
-/* ===== MODERN SETTINGS PAGE ===== */
+import { auth } from "./firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-const API = "http://127.0.0.1:8000";
+const API = (() => {
+  if (window.API_ENDPOINT) return window.API_ENDPOINT;
+  const stored = localStorage.getItem("apiEndpoint");
+  if (stored) return stored;
+  if (["localhost", "127.0.0.1"].includes(window.location.hostname)) return "http://127.0.0.1:8000";
+  return window.location.origin;
+})();
 
-// Initialize on load
-document.addEventListener("DOMContentLoaded", () => {
-  setupNavigation();
-  loadUserInfo();
-  loadSettings();
-  setupEventListeners();
-});
+const KEYS = {
+  chats: "hybrid_chats",
+  token: "token",
+  user: "user",
+  memoryEnabled: "memory_enabled",
+  darkMode: "dark_mode",
+  language: "language",
+  platformMode: "platform_mode"
+};
 
-// Setup navigation
-function setupNavigation() {
-  const navItems = document.querySelectorAll(".nav-item");
-  const sections = document.querySelectorAll(".settings-section");
+function authHeaders() {
+  const token = localStorage.getItem("token");
+  return {
+    "Authorization": "Bearer " + token,
+    "Content-Type": "application/json"
+  };
+}
 
-  navItems.forEach(item => {
-    item.addEventListener("click", () => {
-      // Remove active from all
-      navItems.forEach(i => i.classList.remove("active"));
-      sections.forEach(s => s.classList.remove("active"));
-
-      // Add active to clicked
-      item.classList.add("active");
-      const sectionId = item.getAttribute("data-section");
-      document.getElementById(sectionId)?.classList.add("active");
+async function waitForFirebaseUser() {
+  if (auth.currentUser) return auth.currentUser;
+  return new Promise((resolve) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      unsubscribe();
+      resolve(user || null);
     });
   });
 }
 
-// Setup event listeners
-function setupEventListeners() {
-  // Model select
-  const modelSelect = document.getElementById("modelSelect");
-  if (modelSelect) {
-    modelSelect.addEventListener("change", saveSettings);
+async function ensureToken() {
+  let user = auth.currentUser;
+  if (!user) user = await waitForFirebaseUser();
+
+  if (!user) {
+    const token = localStorage.getItem(KEYS.token);
+    if (!token) {
+      window.location.href = "index.html";
+      throw new Error("Authentication required");
+    }
+    return token;
   }
 
-  // Sliders
-  const temperature = document.getElementById("temperature");
-  const maxTokens = document.getElementById("maxTokens");
-  const topP = document.getElementById("topP");
-
-  if (temperature) {
-    temperature.addEventListener("change", () => {
-      document.getElementById("tempValueDisplay").textContent = temperature.value;
-      saveSettings();
-    });
-  }
-
-  if (maxTokens) {
-    maxTokens.addEventListener("change", () => {
-      document.getElementById("tokensValueDisplay").textContent = maxTokens.value;
-      saveSettings();
-    });
-  }
-
-  if (topP) {
-    topP.addEventListener("change", () => {
-      document.getElementById("topPValueDisplay").textContent = topP.value;
-      saveSettings();
-    });
-  }
-
-  // Action buttons
-  const exportBtn = document.querySelector('button[onclick="exportAllChats()"]');
-  const clearBtn = document.querySelector('button[onclick="clearAllChats()"]');
-
-  if (exportBtn) exportBtn.addEventListener("click", exportAllChats);
-  if (clearBtn) clearBtn.addEventListener("click", clearAllChats);
-
-  // Danger zone
-  const deleteBtn = document.querySelector('button[onclick="deleteAccount()"]');
-  if (deleteBtn) deleteBtn.addEventListener("click", deleteAccount);
+  const token = await user.getIdToken(true);
+  localStorage.setItem(KEYS.token, token);
+  localStorage.setItem(KEYS.user, JSON.stringify({
+    id: user.uid,
+    name: user.displayName || "",
+    email: user.email || "",
+    provider: "google"
+  }));
+  return token;
 }
 
-// Load user info
-function loadUserInfo() {
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const totalChats = JSON.parse(localStorage.getItem("chats") || "[]").length;
-
-  const accountEmail = document.getElementById("accountEmail");
-  const accountCreated = document.getElementById("accountCreated");
-  const totalChatsEl = document.getElementById("totalChats");
-
-  if (accountEmail) accountEmail.textContent = user.email || "user@example.com";
-  if (accountCreated) accountCreated.textContent = new Date().toLocaleDateString();
-  if (totalChatsEl) totalChatsEl.textContent = totalChats;
-
-  // Storage info
-  const chats = JSON.parse(localStorage.getItem("chats") || "[]");
-  const storageSize = document.getElementById("storageSize");
-  if (storageSize) {
-    const messages = chats.reduce((acc, chat) => acc + chat.messages.length, 0);
-    const estimatedSize = (messages * 200).toLocaleString(); // Rough estimate
-    storageSize.textContent = `${estimatedSize} bytes`;
+async function authorizedFetch(url, options = {}) {
+  await ensureToken();
+  const headers = { ...(options.headers || {}), ...authHeaders() };
+  const response = await fetch(url, { ...options, headers });
+  if (response.status === 401) {
+    localStorage.removeItem(KEYS.token);
+    window.location.href = "index.html";
   }
+  return response;
 }
 
-// Load settings
-function loadSettings() {
-  const modelSelect = document.getElementById("modelSelect");
-  const temperature = document.getElementById("temperature");
-  const maxTokens = document.getElementById("maxTokens");
-  const topP = document.getElementById("topP");
+function loadProfile() {
+  const user = JSON.parse(localStorage.getItem(KEYS.user) || "{}");
+  const chats = JSON.parse(localStorage.getItem(KEYS.chats) || "[]");
 
-  const settings = JSON.parse(localStorage.getItem("aiSettings") || "{}");
-
-  if (modelSelect && settings.model) modelSelect.value = settings.model;
-  if (temperature && settings.temperature) {
-    temperature.value = settings.temperature;
-    document.getElementById("tempValueDisplay").textContent = settings.temperature;
-  }
-  if (maxTokens && settings.maxTokens) {
-    maxTokens.value = settings.maxTokens;
-    document.getElementById("tokensValueDisplay").textContent = settings.maxTokens;
-  }
-  if (topP && settings.topP) {
-    topP.value = settings.topP;
-    document.getElementById("topPValueDisplay").textContent = settings.topP;
-  }
-
-  // Load feature toggles
-  const imageAnalysis = document.querySelector('input[onchange="toggleFeature(\'imageAnalysis\'');
-  const voiceInput = document.querySelector('input[onchange="toggleFeature(\'voiceInput\'"]');
-  const voiceOutput = document.querySelector('input[onchange="toggleFeature(\'voiceOutput\'"]');
-  const autoSave = document.querySelector('input[onchange="toggleFeature(\'autoSave\'"]');
-
-  if (imageAnalysis && settings.imageAnalysis === false) imageAnalysis.checked = false;
-  if (voiceInput && settings.voiceInput === false) voiceInput.checked = false;
-  if (voiceOutput && settings.voiceOutput === false) voiceOutput.checked = false;
-  if (autoSave && settings.autoSave === false) autoSave.checked = false;
+  document.getElementById("profileName").textContent = user.name || "Unknown";
+  document.getElementById("profileEmail").textContent = user.email || "Unknown";
+  document.getElementById("profileChats").textContent = String(chats.length);
 }
 
-// Save settings
-function saveSettings() {
-  const modelSelect = document.getElementById("modelSelect");
-  const temperature = document.getElementById("temperature");
-  const maxTokens = document.getElementById("maxTokens");
-  const topP = document.getElementById("topP");
-
-  const settings = {
-    model: modelSelect?.value || "llama",
-    temperature: temperature?.value || "0.7",
-    maxTokens: maxTokens?.value || "512",
-    topP: topP?.value || "0.9"
-  };
-
-  localStorage.setItem("aiSettings", JSON.stringify(settings));
+function loadPreferences() {
+  document.getElementById("memoryToggle").checked = localStorage.getItem(KEYS.memoryEnabled) !== "false";
+  const darkOn = localStorage.getItem(KEYS.darkMode) === "true";
+  document.getElementById("darkModeToggle").checked = darkOn;
+  document.getElementById("languageSelect").value = localStorage.getItem(KEYS.language) || "en";
+  document.getElementById("platformMode").value = localStorage.getItem(KEYS.platformMode) || "web";
+  document.body.classList.toggle("dark-mode", darkOn);
 }
 
-// Toggle feature
-function toggleFeature(feature, enabled) {
-  const settings = JSON.parse(localStorage.getItem("aiSettings") || "{}");
-  settings[feature] = enabled;
-  localStorage.setItem("aiSettings", JSON.stringify(settings));
+function savePreferences() {
+  localStorage.setItem(KEYS.memoryEnabled, document.getElementById("memoryToggle").checked ? "true" : "false");
+  const dark = document.getElementById("darkModeToggle").checked;
+  localStorage.setItem(KEYS.darkMode, dark ? "true" : "false");
+  document.body.classList.toggle("dark-mode", dark);
+  localStorage.setItem(KEYS.language, document.getElementById("languageSelect").value);
+  localStorage.setItem(KEYS.platformMode, document.getElementById("platformMode").value);
 }
 
-// Update display values
-function updateTempValue(value) {
-  document.getElementById("tempValueDisplay").textContent = value;
-  saveSettings();
-}
-
-function updateTokensValue(value) {
-  document.getElementById("tokensValueDisplay").textContent = value;
-  saveSettings();
-}
-
-function updateTopPValue(value) {
-  document.getElementById("topPValueDisplay").textContent = value;
-  saveSettings();
-}
-
-// Export all chats
-function exportAllChats() {
-  const chats = JSON.parse(localStorage.getItem("chats") || "[]");
-  if (chats.length === 0) {
-    alert("No chats to export");
-    return;
-  }
-
-  const data = JSON.stringify(chats, null, 2);
-  const blob = new Blob([data], { type: "application/json" });
+function exportChats() {
+  const chats = localStorage.getItem(KEYS.chats) || "[]";
+  const blob = new Blob([chats], { type: "application/json" });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `multimodal-ai-chats-${new Date().toISOString().split("T")[0]}.json`;
-  a.click();
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `chat-history-${new Date().toISOString().slice(0, 10)}.json`;
+  anchor.click();
   URL.revokeObjectURL(url);
 }
 
-// Clear all chats
-function clearAllChats() {
-  if (!confirm("Delete all chats? This cannot be undone.")) return;
-  
-  localStorage.setItem("chats", JSON.stringify([]));
-  document.getElementById("totalChats").textContent = "0";
-  alert("All chats cleared");
+function clearChats() {
+  if (!confirm("Clear all chat history from local storage?")) return;
+  localStorage.setItem(KEYS.chats, "[]");
+  loadProfile();
+  alert("Local chat history cleared.");
 }
 
-// Delete account
-async function deleteAccount() {
-  if (!confirm("Are you sure? This will permanently delete your account.")) return;
-  if (!confirm("This action cannot be undone. Are you absolutely certain?")) return;
+function mergeChats(localChats, cloudChats) {
+  const map = new Map();
+  [...localChats, ...cloudChats].forEach((chat) => {
+    const id = chat.id;
+    if (!id) return;
+    if (!map.has(id)) {
+      map.set(id, { ...chat, messages: Array.isArray(chat.messages) ? [...chat.messages] : [] });
+      return;
+    }
 
-  try {
-    const token = localStorage.getItem("token");
-    const response = await fetch(`${API}/api/auth/delete-account`, {
-      method: "DELETE",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json"
-      }
+    const existing = map.get(id);
+    const dedupe = new Map();
+    [...(existing.messages || []), ...(chat.messages || [])].forEach((msg) => {
+      const key = msg.id || `${msg.role}|${msg.content || msg.text}|${msg.timestamp || msg.createdAt}`;
+      dedupe.set(key, msg);
     });
 
-    if (response.ok) {
-      localStorage.clear();
-      alert("Account deleted successfully");
-      window.location.href = "index.html";
-    } else {
-      const data = await response.json();
-      alert(`Error: ${data.detail || "Failed to delete account"}`);
-    }
+    existing.messages = [...dedupe.values()].sort((a, b) => new Date((a.timestamp || a.createdAt)) - new Date((b.timestamp || b.createdAt)));
+    existing.title = existing.title === "New Chat" && chat.title ? chat.title : existing.title;
+  });
+
+  return [...map.values()];
+}
+
+async function syncData() {
+  const status = document.getElementById("syncStatus");
+  status.textContent = "Sync in progress...";
+
+  try {
+    const localChats = JSON.parse(localStorage.getItem(KEYS.chats) || "[]");
+    const source = localStorage.getItem(KEYS.platformMode) === "app" ? "app" : "web";
+
+    const upload = await authorizedFetch(`${API}/api/sync/manual`, {
+      method: "POST",
+      body: JSON.stringify({ source, chats: localChats })
+    });
+
+    const uploadData = await upload.json();
+    if (!upload.ok) throw new Error(uploadData.detail || "Sync failed");
+
+    const cloudChats = uploadData.cloud?.chats || [];
+    const merged = mergeChats(localChats, cloudChats);
+    localStorage.setItem(KEYS.chats, JSON.stringify(merged));
+    loadProfile();
+
+    status.textContent = `Sync complete at ${new Date().toLocaleTimeString()}`;
   } catch (error) {
-    console.error("Delete account error:", error);
-    alert("Connection error. Please try again.");
+    status.textContent = `Sync failed: ${error.message}`;
   }
 }
 
-// Logout
 function logout() {
-  if (!confirm("Log out?")) return;
-  localStorage.clear();
+  localStorage.removeItem(KEYS.token);
+  localStorage.removeItem(KEYS.user);
   window.location.href = "index.html";
 }
 
-// Export for inline handlers
-window.updateTempValue = updateTempValue;
-window.updateTokensValue = updateTokensValue;
-window.updateTopPValue = updateTopPValue;
-window.toggleFeature = toggleFeature;
-window.exportAllChats = exportAllChats;
-window.clearAllChats = clearAllChats;
-window.deleteAccount = deleteAccount;
-window.logout = logout;
+function bindEvents() {
+  document.getElementById("memoryToggle").addEventListener("change", savePreferences);
+  document.getElementById("darkModeToggle").addEventListener("change", savePreferences);
+  document.getElementById("languageSelect").addEventListener("change", savePreferences);
+  document.getElementById("platformMode").addEventListener("change", savePreferences);
+  document.getElementById("exportBtn").addEventListener("click", exportChats);
+  document.getElementById("clearBtn").addEventListener("click", clearChats);
+  document.getElementById("syncBtn").addEventListener("click", syncData);
+  document.getElementById("logoutBtn").addEventListener("click", logout);
+}
+
+async function init() {
+  const token = localStorage.getItem(KEYS.token);
+  if (!token) {
+    window.location.href = "index.html";
+    return;
+  }
+
+  await ensureToken();
+  loadProfile();
+  loadPreferences();
+  bindEvents();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  init().catch(() => {
+    window.location.href = "index.html";
+  });
+});
