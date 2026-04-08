@@ -1,10 +1,13 @@
 import json
+import logging
 import os
 from typing import Any, Dict
 
 import firebase_admin
 from firebase_admin import auth as firebase_auth
 from firebase_admin import credentials
+
+logger = logging.getLogger(__name__)
 
 
 class GoogleAuthVerifier:
@@ -35,7 +38,13 @@ class GoogleAuthVerifier:
 
     def verify(self, id_token: str) -> Dict[str, Any]:
         self._initialize()
-        return firebase_auth.verify_id_token(id_token)
+        try:
+            decoded = firebase_auth.verify_id_token(id_token, clock_skew_seconds=10)
+            logger.info("Token verified")
+            return decoded
+        except Exception as exc:
+            logger.exception("Token verification failed: %s", exc)
+            raise
 
 
 verifier = GoogleAuthVerifier()

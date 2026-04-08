@@ -1,4 +1,4 @@
-# backend/llm/llama_client.py
+# llm/llama_client.py
 
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch

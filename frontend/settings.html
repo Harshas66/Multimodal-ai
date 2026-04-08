@@ -2,91 +2,330 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Settings | Multimodal AI</title>
-  <link rel="stylesheet" href="css/settings.css">
+  <link rel="stylesheet" href="css/settings.css?v=6.0" />
 </head>
 <body>
-  <div class="settings-container">
-    <div class="settings-header">
-      <div class="header-content">
-        <a href="chat.html" class="back-button">Back to Chat</a>
-        <h1>Settings</h1>
+  <div class="settings-page">
+    <div class="settings-loader" id="settingsLoader">
+      <div class="settings-loader-card">
+        <div class="settings-loader-spinner"></div>
+        <div class="settings-loader-copy">
+          <strong>Loading settings</strong>
+          <span>Restoring your session and workspace preferences.</span>
+        </div>
       </div>
     </div>
 
-    <div class="settings-layout">
-      <main class="settings-content">
-        <section class="settings-section active" id="profile">
-          <div class="section-header">
-            <h2>Profile</h2>
-            <p>Google OAuth account details</p>
-          </div>
-          <div class="info-card">
-            <div class="info-row"><span>Name</span><strong id="profileName">-</strong></div>
-            <div class="info-row"><span>Email</span><strong id="profileEmail">-</strong></div>
-            <div class="info-row"><span>Total Chats</span><strong id="profileChats">0</strong></div>
-          </div>
-          <button class="btn-danger-large" id="logoutBtn" type="button">Logout</button>
-        </section>
+    <div class="settings-background" aria-hidden="true">
+      <div class="settings-orb orb-a"></div>
+      <div class="settings-orb orb-b"></div>
+      <div class="settings-grid"></div>
+    </div>
 
-        <section class="settings-section active" id="sync">
-          <div class="section-header">
-            <h2>Sync</h2>
-            <p>Manual cross-platform sync between local and cloud memory</p>
-          </div>
-          <div class="action-card">
-            <button class="btn-secondary" id="syncBtn" type="button">Sync Data</button>
-            <p id="syncStatus">Not synced yet.</p>
-          </div>
-        </section>
+    <header class="settings-header">
+      <div class="settings-header-inner">
+        <a href="chat.html" class="back-button">Back to Chat</a>
+        <div class="header-copy">
+          <span class="header-kicker">Workspace Settings</span>
+          <h1>Account, security, and data controls</h1>
+          <p>Manage your profile, password, sync state, and local data without leaving the product surface.</p>
+        </div>
+      </div>
+    </header>
 
-        <section class="settings-section active" id="data">
-          <div class="section-header">
-            <h2>Data</h2>
-            <p>Chat memory and exports</p>
+    <main class="settings-main">
+      <aside class="settings-summary-card">
+        <div class="summary-avatar-wrap">
+          <div class="summary-avatar" id="profileAvatar" aria-label="Profile avatar">
+            <img id="profileAvatarImage" alt="Profile" hidden />
+            <span id="profileAvatarInitials">AI</span>
           </div>
-          <div class="action-card">
-            <button class="btn-secondary" id="exportBtn" type="button">Export Chat History</button>
-            <button class="btn-danger" id="clearBtn" type="button">Clear Chat History</button>
+          <div class="avatar-actions">
+            <label class="avatar-upload-btn" for="profileImageInput">Upload Profile Image</label>
+            <button class="avatar-remove-btn" id="summaryRemoveProfileImageBtn" type="button">Remove Profile Image</button>
           </div>
-        </section>
+          <input id="profileImageInput" type="file" accept="image/*" hidden />
+        </div>
 
-        <section class="settings-section active" id="preferences">
-          <div class="section-header">
-            <h2>Preferences</h2>
-            <p>Runtime behavior options</p>
+        <div class="summary-text">
+          <h2 id="profileNameHeading">Multimodal User</h2>
+          <p id="profileEmailHeading">-</p>
+        </div>
+
+        <div class="summary-stats">
+          <div class="summary-stat">
+            <span class="summary-stat-label">Chats</span>
+            <strong id="profileChats">0</strong>
           </div>
-          <div class="toggle-card">
-            <div class="toggle-info"><h4>Memory</h4><p>Allow context retrieval across chats.</p></div>
-            <label class="toggle-switch"><input id="memoryToggle" type="checkbox" checked><span></span></label>
+          <div class="summary-stat">
+            <span class="summary-stat-label">Mode</span>
+            <strong id="summaryPlatformMode">Web</strong>
           </div>
-          <div class="toggle-card">
-            <div class="toggle-info"><h4>Dark Mode</h4><p>Switch dark theme styling.</p></div>
-            <label class="toggle-switch"><input id="darkModeToggle" type="checkbox"><span></span></label>
-          </div>
-          <div class="info-card">
-            <div class="info-row">
-              <span>Language</span>
-              <select id="languageSelect">
-                <option value="en">English</option>
-                <option value="hi">Hindi</option>
-                <option value="es">Spanish</option>
-              </select>
+        </div>
+
+        <div class="summary-note">
+          Profile photo is stored locally for this device unless a backend sync is added later.
+        </div>
+      </aside>
+
+      <section class="settings-content">
+        <div class="settings-status" id="settingsStatus" hidden></div>
+
+        <section class="settings-card">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker">Profile</span>
+              <h3>User information</h3>
             </div>
-            <div class="info-row">
-              <span>Platform Mode</span>
-              <select id="platformMode">
-                <option value="web">Web (Cloud + Local)</option>
-                <option value="app">Mobile/Desktop App (Local-first)</option>
-              </select>
+            <p>Review and update your visible account details.</p>
+          </div>
+
+          <div class="form-grid">
+            <label class="field">
+              <span>Name</span>
+              <input id="displayNameInput" type="text" placeholder="Your full name" />
+            </label>
+
+            <label class="field">
+              <span>Email</span>
+              <input id="profileEmail" type="email" disabled />
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-primary" id="saveProfileBtn" type="button">Save Profile</button>
+            <button class="btn-secondary" id="removeProfileImageBtn" type="button">Remove Profile Image</button>
+          </div>
+        </section>
+
+        <section class="settings-card">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker">Security</span>
+              <h3>Change password</h3>
+            </div>
+            <p>Keep your account secure. Google-only accounts will be informed if password change is unavailable.</p>
+          </div>
+
+          <div class="form-grid">
+            <label class="field">
+              <span>Current password</span>
+              <input id="currentPassword" type="password" placeholder="Enter current password" />
+            </label>
+
+            <label class="field">
+              <span>New password</span>
+              <input id="newPassword" type="password" placeholder="Minimum 6 characters" />
+            </label>
+
+            <label class="field">
+              <span>Confirm password</span>
+              <input id="confirmPassword" type="password" placeholder="Repeat new password" />
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-primary" id="changePasswordBtn" type="button">Update Password</button>
+          </div>
+        </section>
+
+        <section class="settings-card">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker">Preferences</span>
+              <h3>Runtime behavior</h3>
+            </div>
+            <p>Only supported controls are shown here to avoid dead settings.</p>
+          </div>
+
+          <div class="toggle-card">
+            <div class="toggle-copy">
+              <h4>Memory</h4>
+              <p>Allow context retrieval across chats.</p>
+            </div>
+            <label class="toggle-switch">
+              <input id="memoryToggle" type="checkbox" checked />
+              <span></span>
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Platform mode</span>
+            <select id="platformMode">
+              <option value="web">Web (Cloud + Local)</option>
+              <option value="app">Mobile/Desktop App (Local-first)</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="settings-card">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker">Data</span>
+              <h3>Sync and local storage</h3>
+            </div>
+            <p>Export, clear, or manually sync your local and cloud memory.</p>
+          </div>
+
+          <div class="data-grid">
+            <div class="mini-card">
+              <h4>Manual sync</h4>
+              <p id="syncStatus">Not synced yet.</p>
+              <button class="btn-secondary" id="syncBtn" type="button">Sync Data</button>
+            </div>
+
+            <div class="mini-card">
+              <h4>Export history</h4>
+              <p>Create a clean PDF from one chat, multiple chats, or your full local history.</p>
+              <button class="btn-secondary" id="exportBtn" type="button">Export Chat History</button>
+            </div>
+
+            <div class="mini-card danger-card">
+              <h4>Clear local history</h4>
+              <p>Remove only locally stored chats from this device without affecting your account.</p>
+              <button class="btn-danger" id="clearBtn" type="button">Clear Chat History</button>
             </div>
           </div>
         </section>
-      </main>
+
+        <section class="settings-card account-card">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker">Account</span>
+              <h3>Session control</h3>
+            </div>
+            <p>Log out securely from this device.</p>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-danger-large" id="logoutBtn" type="button">Logout</button>
+          </div>
+        </section>
+
+        <section class="settings-card danger-zone-card">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker danger-kicker">Delete Account</span>
+              <h3>Delete Account</h3>
+            </div>
+            <p>Permanently delete your account and all associated data.</p>
+          </div>
+
+          <div class="danger-zone-copy">
+            <p>This action cannot be undone.</p>
+            <p>Your profile, synced chat data, and this device's stored account state will be removed.</p>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-danger-large" id="deleteAccountBtn" type="button">Delete Account</button>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div class="settings-modal" id="deleteAccountModal" hidden>
+    <div class="settings-modal-backdrop" id="deleteAccountBackdrop"></div>
+    <div class="settings-modal-card" role="dialog" aria-modal="true" aria-labelledby="deleteAccountTitle">
+      <div class="settings-modal-head">
+        <div>
+          <span class="section-kicker danger-kicker">Danger Zone</span>
+          <h2 id="deleteAccountTitle">Delete your account?</h2>
+        </div>
+        <button class="modal-close-btn" id="closeDeleteAccountModalBtn" type="button" aria-label="Close delete account dialog">Close</button>
+      </div>
+
+      <div class="settings-modal-copy">
+        <p>Type <strong>DELETE</strong> to confirm permanent account removal.</p>
+        <p id="deleteAccountProviderHint">You may be asked to reauthenticate before deletion completes.</p>
+      </div>
+
+      <div class="form-grid modal-grid">
+        <label class="field">
+          <span>Confirmation</span>
+          <input id="deleteAccountConfirmInput" type="text" placeholder="Type DELETE" autocomplete="off" />
+        </label>
+
+        <label class="field" id="deleteAccountPasswordField" hidden>
+          <span>Current password</span>
+          <input id="deleteAccountPasswordInput" type="password" placeholder="Required for password accounts" autocomplete="current-password" />
+        </label>
+      </div>
+
+      <div class="modal-warning">
+        This action cannot be undone. Make sure you no longer need access to this account.
+      </div>
+
+      <div class="form-actions modal-actions">
+        <button class="btn-secondary" id="cancelDeleteAccountBtn" type="button">Cancel</button>
+        <button class="btn-danger-large" id="confirmDeleteAccountBtn" type="button">Confirm Delete</button>
+      </div>
     </div>
   </div>
 
+  <div class="settings-modal" id="exportChatsModal" hidden>
+    <div class="settings-modal-backdrop" id="exportChatsBackdrop"></div>
+    <div class="settings-modal-card wide-modal" role="dialog" aria-modal="true" aria-labelledby="exportChatsTitle">
+      <div class="settings-modal-head">
+        <div>
+          <span class="section-kicker">Export</span>
+          <h2 id="exportChatsTitle">Export chat history to PDF</h2>
+        </div>
+        <button class="modal-close-btn" id="closeExportChatsModalBtn" type="button" aria-label="Close export dialog">Close</button>
+      </div>
+
+      <div class="settings-modal-copy">
+        <p>Select one or more chats to include in a single PDF export.</p>
+      </div>
+
+      <label class="select-all-row">
+        <input id="exportSelectAll" type="checkbox" />
+        <span>Select all chats</span>
+      </label>
+
+      <div class="export-chat-list" id="exportChatList"></div>
+
+      <div class="modal-warning" id="exportModalHint">
+        No chats selected yet.
+      </div>
+
+      <div class="form-actions modal-actions">
+        <button class="btn-secondary" id="cancelExportChatsBtn" type="button">Cancel</button>
+        <button class="btn-primary" id="confirmExportChatsBtn" type="button">Generate PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-modal" id="clearChatsModal" hidden>
+    <div class="settings-modal-backdrop" id="clearChatsBackdrop"></div>
+    <div class="settings-modal-card" role="dialog" aria-modal="true" aria-labelledby="clearChatsTitle">
+      <div class="settings-modal-head">
+        <div>
+          <span class="section-kicker danger-kicker">Data Removal</span>
+          <h2 id="clearChatsTitle">Clear all local chat history?</h2>
+        </div>
+        <button class="modal-close-btn" id="closeClearChatsModalBtn" type="button" aria-label="Close clear chats dialog">Close</button>
+      </div>
+
+      <div class="settings-modal-copy">
+        <p>This removes only the chats stored in local browser storage on this device.</p>
+        <p>Your account, token, profile, and other settings will remain intact.</p>
+      </div>
+
+      <div class="modal-warning">
+        This cannot be undone for local history once cleared.
+      </div>
+
+      <div class="form-actions modal-actions">
+        <button class="btn-secondary" id="cancelClearChatsBtn" type="button">Cancel</button>
+        <button class="btn-danger" id="confirmClearChatsBtn" type="button">Clear Chat History</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script type="module" src="js/settings.js"></script>
 </body>
 </html>

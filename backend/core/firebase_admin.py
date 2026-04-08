@@ -1,8 +1,12 @@
 #backend/core/firebase_admin.py
 '''from fastapi import Header, HTTPException
+import os
+import logging
+
 import firebase_admin
 from firebase_admin import credentials, auth
-import os
+
+logger = logging.getLogger(__name__)
 
 # Initialize Firebase Admin only once
 if not firebase_admin._apps:
@@ -23,7 +27,7 @@ def verify_firebase_token(Authorization: str = Header(None)):
         if scheme.lower() != "bearer":
             raise HTTPException(status_code=401, detail="Invalid auth scheme")
 
-        decoded_token = auth.verify_id_token(token)
+        decoded_token = auth.verify_id_token(token, clock_skew_seconds=10)
 
         return decoded_token
 
@@ -53,7 +57,10 @@ def init_firebase():
 
 
 def verify_token(token: str):
-
-    decoded_token = auth.verify_id_token(token)
-
-    return decoded_token
+    try:
+        decoded_token = auth.verify_id_token(token, clock_skew_seconds=10)
+        logger.info("Token verified")
+        return decoded_token
+    except Exception as exc:
+        logger.exception("Token verification failed: %s", exc)
+        raise

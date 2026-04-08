@@ -2,41 +2,119 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sign Up | Multimodal AI</title>
-  <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="css/auth.css?v=6.0" />
 </head>
-<body>
-  <div class="auth-container">
-    <div class="auth-branding">
-      <div class="brand-content">
-        <h1>Multimodal AI</h1>
-        <p>Production authentication is Google-only.</p>
+<body class="auth-page auth-page-signup">
+  <div class="auth-scene" aria-hidden="true">
+    <div class="bg-gradient-orb orb-a"></div>
+    <div class="bg-gradient-orb orb-b"></div>
+    <div class="bg-gradient-orb orb-c"></div>
+    <div class="grid-glow"></div>
+    <div class="particle-layer particle-layer-one"></div>
+    <div class="particle-layer particle-layer-two"></div>
+    <div class="neural-lines"></div>
+    <div class="marquee marquee-top">
+      <div class="marquee-track">
+        <span>Multimodal AI Assistant</span>
+        <span>Build with intelligent workflows</span>
+        <span>Context-aware interactions at presentation quality</span>
+        <span>AI that understands text, voice, and vision</span>
+        <span>Multimodal AI Assistant</span>
+        <span>Build with intelligent workflows</span>
+        <span>Context-aware interactions at presentation quality</span>
+        <span>AI that understands text, voice, and vision</span>
       </div>
     </div>
-
-    <div class="auth-form-container">
-      <div class="form-card">
-        <div class="form-header">
-          <h2>Create Account</h2>
-          <p>Accounts are created only through verified Google OAuth.</p>
-        </div>
-
-        <button id="googleLoginBtn" class="btn-google">
-          Sign up with Google
-        </button>
-
-        <div class="auth-footer">
-          <p>Already signed up? <a href="index.html" class="auth-link">Go to sign in</a></p>
-        </div>
-      </div>
-
-      <div class="loading-spinner" id="loadingSpinner" style="display: none;">
-        <div class="spinner"></div>
+    <div class="marquee marquee-bottom">
+      <div class="marquee-track reverse">
+        <span>Adaptive collaboration</span>
+        <span>Evaluator-ready product experience</span>
+        <span>Human-centered AI design</span>
+        <span>Fast onboarding. Premium interface.</span>
+        <span>Adaptive collaboration</span>
+        <span>Evaluator-ready product experience</span>
+        <span>Human-centered AI design</span>
+        <span>Fast onboarding. Premium interface.</span>
       </div>
     </div>
   </div>
 
-  <script type="module" src="js/auth.js"></script>
+  <main class="auth-shell">
+    <section class="auth-showcase">
+      <div class="eyebrow">Launch Your Workspace</div>
+      <h1>Create an account for the premium AI product experience.</h1>
+      <p>
+        Step into an interface crafted for polished demos and external review.
+        Modern motion, focused usability, and a visual system that feels product-grade.
+      </p>
+      <div class="showcase-points">
+        <div class="showcase-point">
+          <span class="point-dot"></span>
+          <span>Beautiful, responsive auth surfaces with clear visual hierarchy</span>
+        </div>
+        <div class="showcase-point">
+          <span class="point-dot"></span>
+          <span>Lightweight animations that enhance the AI atmosphere without clutter</span>
+        </div>
+        <div class="showcase-point">
+          <span class="point-dot"></span>
+          <span>Structured to showcase a credible SaaS AI product from the first screen</span>
+        </div>
+      </div>
+      <div class="floating-stat">
+        <div class="stat-label">Workspace Ready</div>
+        <div class="stat-value">Presentation-grade onboarding</div>
+      </div>
+    </section>
+
+    <section class="auth-panel-wrap">
+      <div class="auth-card">
+        <div class="auth-card-glow" aria-hidden="true"></div>
+        <div class="auth-logo">
+          <div class="auth-logo-mark">
+           <!-- <img src="assets/logo.svg" alt="" />-->
+          </div>
+          <div>
+            <div class="auth-kicker">Create account</div>
+            <h2>Multimodal AI</h2>
+          </div>
+        </div>
+
+        <div class="auth-copy">
+          <p>Set up your profile and enter the assistant workspace.</p>
+        </div>
+
+        <div class="auth-status" id="authStatus" hidden></div>
+
+        <div class="form-group">
+          <input id="name" placeholder=" " required />
+          <label for="name">Full name</label>
+        </div>
+
+        <div class="form-group">
+          <input id="email" type="email" placeholder=" " required />
+          <label for="email">Email address</label>
+        </div>
+
+        <div class="form-group">
+          <input id="password" type="password" placeholder=" " required minlength="6" />
+          <label for="password">Password (6+ characters)</label>
+        </div>
+
+        <div class="auth-actions">
+          <button id="signupBtn" type="button">Create account</button>
+          <button class="google-btn" id="googleSignupBtn" type="button">Sign up with Google</button>
+        </div>
+
+        <div class="auth-footer">
+          Already have an account? <a href="index.html">Sign in</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="js/auth.js?v=3.3"></script>
 </body>
 </html>

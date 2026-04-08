@@ -1,3 +1,4 @@
+#backend/routes/sync.py
 from typing import Any, Dict, List, Literal
 
 from fastapi import APIRouter, Depends
@@ -11,6 +12,17 @@ router = APIRouter()
 
 def _uid(decoded: dict) -> str:
     return decoded.get("uid") or decoded.get("sub") or ""
+
+
+def _ensure_repo_user(decoded: dict) -> str:
+    user_id = _uid(decoded)
+    repo.ensure_user(
+        user_id=user_id,
+        email=decoded.get("email", ""),
+        name=decoded.get("name") or decoded.get("email", "").split("@")[0],
+        provider=((decoded.get("firebase") or {}).get("sign_in_provider") or "password").replace(".com", ""),
+    )
+    return user_id
 
 
 class SyncMessage(BaseModel):
@@ -36,7 +48,7 @@ class SyncRequest(BaseModel):
 
 @router.post("/manual")
 def manual_sync(payload: SyncRequest, current_user=Depends(require_user)) -> Dict[str, Any]:
-    merged = repo.sync_payload(user_id=_uid(current_user), chats=[chat.model_dump() for chat in payload.chats], source=payload.source)
+    merged = repo.sync_payload(user_id=_ensure_repo_user(current_user), chats=[chat.model_dump() for chat in payload.chats], source=payload.source)
     return {
         "message": "Sync complete",
         "cloud": merged,
@@ -45,7 +57,7 @@ def manual_sync(payload: SyncRequest, current_user=Depends(require_user)) -> Dic
 
 @router.get("/download")
 def download_sync(current_user=Depends(require_user)) -> Dict[str, Any]:
-    data = repo.export_user_data(user_id=_uid(current_user))
+    data = repo.export_user_data(user_id=_ensure_repo_user(current_user))
     return {
         "cloud": data,
     }

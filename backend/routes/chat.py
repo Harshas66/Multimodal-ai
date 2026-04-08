@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from backend.orchestrator.router import smart_route
 from backend.security import require_user
+from backend.utils.user_memory import extract_memory_facts, format_memory_context
 from memory.repository import repo
 
 router = APIRouter()
@@ -35,42 +36,65 @@ class ChatRenameRequest(BaseModel):
     title: str
 
 
+class SaveMessageRequest(BaseModel):
+    chat_id: str
+    session_id: Optional[str] = None
+    title: Optional[str] = "New Chat"
+    message: str
+    role: Literal["user", "assistant"]
+    source: Literal["web", "app"] = "web"
+
+
 def _uid(decoded: dict) -> str:
-    uid = decoded.get("uid")
+    uid = decoded.get("uid") or decoded.get("sub")
     if not uid:
         raise HTTPException(status_code=401, detail="Invalid user token")
     return uid
+
+
+def _ensure_repo_user(decoded: dict) -> str:
+    user_id = _uid(decoded)
+    provider = ((decoded.get("firebase") or {}).get("sign_in_provider") or "password").replace(".com", "")
+    repo.ensure_user(
+        user_id=user_id,
+        email=decoded.get("email", ""),
+        name=decoded.get("name") or decoded.get("email", "").split("@")[0],
+        provider=provider,
+    )
+    return user_id
 
 
 def _format_context_lines(user_id: str, enabled: bool, current_message: str = "") -> str:
     if not enabled:
         return ""
 
+    context_sections = []
+    memory_context = format_memory_context(repo.list_memory(user_id=user_id))
+    if memory_context:
+        context_sections.append(memory_context)
+
     recent = repo.recent_user_context(user_id=user_id, limit=20)
-    if not recent:
+    if recent:
+        lines = []
+        current = (current_message or "").strip()
+        for item in recent:
+            role = item.get("role", "assistant")
+            role_label = "User" if str(role).lower() == "user" else "Assistant"
+            content = (item.get("content") or "").strip()
+            if not content:
+                continue
+            if role == "user" and current and content == current:
+                continue
+            if len(content) > 280:
+                content = content[:280].rstrip() + "..."
+            lines.append(f"{role_label}: {content}")
+        if lines:
+            context_sections.append("Recent cross-chat context:\n" + "\n".join(lines[-20:]))
+
+    if not context_sections:
         return ""
 
-    lines = []
-    current = (current_message or "").strip()
-    for item in recent:
-        role = item.get("role", "assistant")
-        role_label = "User" if str(role).lower() == "user" else "Assistant"
-        content = (item.get("content") or "").strip()
-        if not content:
-            continue
-        # Avoid duplicating the current user query into memory context.
-        if role == "user" and current and content == current:
-            continue
-        # Keep memory context bounded to avoid oversized downstream prompts/tools.
-        if len(content) > 280:
-            content = content[:280].rstrip() + "..."
-        lines.append(f"{role_label}: {content}")
-
-    if not lines:
-        return ""
-
-    context_lines = lines[-20:]
-    context = "Use this memory context across chats for continuity:\n" + "\n".join(context_lines)
+    context = "\n\n".join(context_sections)
     if len(context) > 3000:
         context = context[-3000:]
     return context
@@ -80,7 +104,7 @@ def _generate_reply(user_input: str, context: str) -> str:
     prompt = f"{context}\n\nCurrent user input:\n{user_input}" if context else user_input
     try:
         with ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(smart_route, prompt)
+            future = pool.submit(smart_route, prompt, user_input)
             output = future.result(timeout=35)
     except TimeoutError:
         output = "I am taking too long to respond right now. Please try again."
@@ -93,7 +117,7 @@ def _generate_reply(user_input: str, context: str) -> str:
 
 @router.post("/ask")
 def ask(req: ChatRequest, current_user=Depends(require_user)):
-    user_id = _uid(current_user)
+    user_id = _ensure_repo_user(current_user)
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
@@ -110,6 +134,8 @@ def ask(req: ChatRequest, current_user=Depends(require_user)):
         content=req.message,
         source=req.source,
     )
+    for fact in extract_memory_facts(req.message):
+        repo.upsert_memory(user_id=user_id, key=fact["key"], value=fact["value"])
 
     context = _format_context_lines(user_id=user_id, enabled=req.memory_enabled, current_message=req.message)
     try:
@@ -135,7 +161,7 @@ def ask(req: ChatRequest, current_user=Depends(require_user)):
 
 @router.post("/stream")
 def stream(req: ChatRequest, current_user=Depends(require_user)):
-    user_id = _uid(current_user)
+    user_id = _ensure_repo_user(current_user)
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
@@ -146,6 +172,8 @@ def stream(req: ChatRequest, current_user=Depends(require_user)):
         title=req.title or "New Chat",
     )
     repo.save_message(chat_id=req.chat_id, role="user", content=req.message, source=req.source)
+    for fact in extract_memory_facts(req.message):
+        repo.upsert_memory(user_id=user_id, key=fact["key"], value=fact["value"])
 
     context = _format_context_lines(user_id=user_id, enabled=req.memory_enabled, current_message=req.message)
     try:
@@ -175,7 +203,7 @@ def stream(req: ChatRequest, current_user=Depends(require_user)):
 
 @router.post("/regenerate")
 def regenerate(req: RegenerateRequest, current_user=Depends(require_user)):
-    user_id = _uid(current_user)
+    user_id = _ensure_repo_user(current_user)
     repo.create_chat_if_missing(chat_id=req.chat_id, user_id=user_id, session_id=req.chat_id, title="New Chat")
 
     context = _format_context_lines(user_id=user_id, enabled=req.memory_enabled, current_message=req.message)
@@ -194,12 +222,40 @@ def regenerate(req: RegenerateRequest, current_user=Depends(require_user)):
 
 @router.get("/history")
 def history(search: str = Query(default=""), current_user=Depends(require_user)):
-    return {"chats": repo.list_chats(user_id=_uid(current_user), search=search)}
+    user_id = _ensure_repo_user(current_user)
+    data = repo.export_user_data(user_id=user_id)
+    chats = data.get("chats", [])
+    if search:
+        term = search.strip().lower()
+        chats = [chat for chat in chats if term in str(chat.get("title", "")).lower()]
+    return {"chats": chats, "memory": data.get("memory", [])}
+
+
+@router.post("/save")
+def save_message(req: SaveMessageRequest, current_user=Depends(require_user)):
+    user_id = _ensure_repo_user(current_user)
+    repo.create_chat_if_missing(
+        chat_id=req.chat_id,
+        user_id=user_id,
+        session_id=req.session_id or req.chat_id,
+        title=req.title or "New Chat",
+    )
+    saved = repo.save_message(
+        chat_id=req.chat_id,
+        role=req.role,
+        content=req.message,
+        source=req.source,
+    )
+    if req.role == "user":
+        for fact in extract_memory_facts(req.message):
+            repo.upsert_memory(user_id=user_id, key=fact["key"], value=fact["value"])
+    return {"message": "Saved", "saved_message": saved}
 
 
 @router.get("/{chat_id}/messages")
 def messages(chat_id: str, current_user=Depends(require_user)):
-    user_chats = {item["id"] for item in repo.list_chats(user_id=_uid(current_user))}
+    user_id = _ensure_repo_user(current_user)
+    user_chats = {item["id"] for item in repo.list_chats(user_id=user_id)}
     if chat_id not in user_chats:
         raise HTTPException(status_code=404, detail="Chat not found")
     return {"messages": repo.list_messages(chat_id=chat_id)}
@@ -207,11 +263,11 @@ def messages(chat_id: str, current_user=Depends(require_user)):
 
 @router.patch("/{chat_id}")
 def rename_chat(chat_id: str, payload: ChatRenameRequest, current_user=Depends(require_user)):
-    repo.rename_chat(chat_id=chat_id, user_id=_uid(current_user), title=payload.title)
+    repo.rename_chat(chat_id=chat_id, user_id=_ensure_repo_user(current_user), title=payload.title)
     return {"message": "Chat title updated"}
 
 
 @router.delete("/{chat_id}")
 def delete_chat(chat_id: str, current_user=Depends(require_user)):
-    repo.delete_chat(chat_id=chat_id, user_id=_uid(current_user))
+    repo.delete_chat(chat_id=chat_id, user_id=_ensure_repo_user(current_user))
     return {"message": "Chat deleted"}

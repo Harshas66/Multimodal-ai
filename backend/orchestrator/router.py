@@ -1,138 +1,136 @@
-# backend/orchestrator/router.py
+from typing import Optional
+import re
+
 from backend.integrations.hf_integration import hf_simple_response
 from backend.integrations.openai_integration import openai_response
 from backend.integrations.google_integration import google_gemini_response
 from backend.integrations.web_search import tavily_search
 
 
-def _extract_user_query(prompt: str) -> str:
-    marker = "Current user input:"
-    if marker in prompt:
-        return prompt.split(marker, 1)[1].strip()
-    return prompt.strip()
+def is_image_request(prompt: str):
 
+    p = prompt.lower()
 
-def _compress_search_query(query: str, max_chars: int = 350, max_words: int = 24) -> str:
-    text = " ".join((query or "").strip().split())
-    if not text:
-        return ""
-
-    stopwords = {
-        "the", "a", "an", "and", "or", "to", "for", "of", "in", "on", "with", "is",
-        "are", "was", "were", "be", "been", "it", "this", "that", "these", "those",
-        "i", "you", "we", "they", "he", "she", "please", "can", "could", "would",
-        "should", "explain", "tell", "me", "about", "detail", "details", "what", "how"
-    }
-
-    tokens = []
-    for token in text.lower().split():
-        clean = "".join(ch for ch in token if ch.isalnum() or ch in {"-", "."})
-        if clean and clean not in stopwords and len(clean) > 1:
-            tokens.append(clean)
-
-    if not tokens:
-        tokens = text.lower().split()
-
-    compact = " ".join(tokens[:max_words]).strip()
-    if len(compact) > max_chars:
-        compact = compact[:max_chars].rsplit(" ", 1)[0].strip() or compact[:max_chars]
-
-    return compact or text[:max_chars]
-
-
-def needs_web_search(prompt: str) -> bool:
-    prompt_lower = prompt.lower()
-
-    keywords = [
-        "price", "cost", "how much", "mrp",
-        "buy", "purchase", "order",
-        "available", "availability",
-        "discount", "offer", "deal",
-        "cheapest", "best price",
-        "review", "reviews", "rating", "ratings",
-        "feedback", "customer experience",
-        "is it good", "worth buying",
-        "near me", "nearby",
-        "location", "address",
-        "where is", "how to reach",
-        "map", "directions",
-        "hotel", "restaurant", "resort",
-        "best hotel", "best restaurant",
-        "places to visit",
-        "tourist spots",
-        "latest", "news", "current",
-        "today", "recent",
-        "update", "announcement",
-        "headline",
-        "top", "top 10", "compare",
-        "comparison", "vs",
-        "which is better",
-        "alternatives",
-        "specs", "specifications",
-        "features", "launch date",
-        "release date",
-        "founder", "ceo",
-        "market cap", "share price",
-        "stock price",
-        "weather", "temperature",
-        "forecast",
-        "match result", "score",
-        "live score", "winner",
-        "box office", "collection",
-        "cast", "release",
-        "trailer",
+    explicit_keywords = [
+        "generate image",
+        "create image",
+        "make image",
+        "image of",
+        "photo of",
+        "picture of",
+        "ai image",
+        "image please",
+        "draw",
+        "illustration",
+        "logo",
+        "poster",
+        "banner",
+        "wallpaper",
+        "thumbnail",
+        "icon",
+        "edit image",
+        "modify image",
     ]
 
-    return any(keyword in prompt_lower for keyword in keywords)
+    if any(k in p for k in explicit_keywords):
+        return True
+
+    # Catch natural requests like "generate a sea shore sunset scene"
+    visual_verbs = r"(generate|create|make|design|draw|illustrate|paint|render)"
+    visual_targets = r"(image|picture|photo|art|artwork|logo|poster|banner|wallpaper|thumbnail|icon|portrait|scene|illustration)"
+    if re.search(rf"\b{visual_verbs}\b.*\b{visual_targets}\b", p):
+        return True
+
+    # Avoid routing code-generation prompts to image API.
+    code_words = ("code", "python", "javascript", "java", "cpp", "c++", "sql", "function", "script")
+    if re.search(rf"^\s*{visual_verbs}\b", p) and not any(w in p for w in code_words):
+        return True
+
+    return False
 
 
-def _llm_fallback(prompt: str) -> str:
-    try:
-        return google_gemini_response(prompt)
-    except Exception:
+def needs_web_search(prompt: str):
+
+    p = prompt.lower()
+
+    keywords = [
+        "latest",
+        "today",
+        "current",
+        "news",
+        "price",
+        "weather",
+        "score",
+        "stock",
+        "update"
+    ]
+
+    return any(k in p for k in keywords)
+
+
+def smart_route(prompt: str, user_message: Optional[str] = None):
+    route_text = user_message or prompt
+
+    # 1️⃣ IMAGE GENERATION → OPENAI
+    if is_image_request(route_text):
+
         try:
-            return openai_response(prompt)
-        except Exception:
-            return hf_simple_response(prompt)
+            # Use the raw user prompt for image generation; memory context can degrade image quality.
+            return openai_response(route_text)
+
+        except Exception as e:
+            print("OpenAI image error:", e)
+            return f"⚠️ Image generation failed: {e}"
 
 
-def smart_route(prompt: str):
-    user_query = _extract_user_query(prompt)
+    # 2️⃣ WEB SEARCH
+    if needs_web_search(route_text):
 
-    # -------- Web Search --------
-    try:
-        if needs_web_search(user_query):
-            search_query = _compress_search_query(user_query)
-            search_results = tavily_search(search_query)
+        try:
 
-            if search_results:
-                enhanced_prompt = f"""
-Use these web search results if helpful.
+            results = tavily_search(prompt)
 
-Web Results:
-{search_results}
+            if results:
 
-User Question:
-{user_query}
+                context = ""
+
+                for r in results:
+                    context += f"\nTitle: {r['title']}\nContent: {r['content']}\n"
+
+                web_prompt = f"""
+Use the following web search results to answer the question.
+
+Web results:
+{context}
+
+User question:
+{prompt}
 """
-                prompt = enhanced_prompt
-    except Exception as e:
-        print("Web search failed:", e)
 
-    # -------- Model Routing --------
-    try:
-        return google_gemini_response(prompt)
-    except Exception as e:
-        print("Gemini failed:", e)
+                return hf_simple_response(web_prompt)
 
-    try:
-        return openai_response(prompt)
-    except Exception as e:
-        print("OpenAI failed:", e)
+        except Exception as e:
+            print("Web search error:", e)
 
+
+    # 3️⃣ PRIMARY MODEL → LLAMA
     try:
+
         return hf_simple_response(prompt)
-    except Exception as e:
-        print("HF failed:", e)
 
-    return "⚠️ AI services are temporarily unavailable."
+    except Exception as e:
+
+        print("HF error:", e)
+
+
+    # 4️⃣ FALLBACK → GEMINI
+    try:
+
+        return google_gemini_response(prompt)
+
+    except Exception as e:
+
+        print("Gemini fallback error:", e)
+
+
+    return "⚠️ AI services temporarily unavailable."
