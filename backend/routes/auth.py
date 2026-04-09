@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from core.firebase_admin import verify_token, init_firebase
-from security import require_user
+from auth import require_user
 
 router = APIRouter()
 
