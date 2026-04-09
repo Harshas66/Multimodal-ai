@@ -28,7 +28,7 @@ def save_message(user_id, chat_id, role, content):
 
 
 class ChatRequest(BaseModel):
-    chat_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    chat_id: str
     message: str
 
 
@@ -41,25 +41,25 @@ def ask(req: ChatRequest, current_user=Depends(require_user)):
 
     user_id = _uid(current_user)
 
+    if not req.chat_id:
+        raise HTTPException(status_code=400, detail="chat_id is required")
+
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
-    # Save user message
+    print("USER:", user_id, "CHAT:", req.chat_id)
+
     save_message(user_id, req.chat_id, "user", req.message)
 
-    # ✅ Fetch history
     history = get_chat_history(user_id, req.chat_id)
 
-    # Convert history to text (simple format)
     context = "\n".join([f"{m['role']}: {m['content']}" for m in history])
 
-    # Generate AI response
     try:
-        reply = smart_route(context, req.message)
+        reply = smart_route(context, "")  # ✅ FIXED
     except Exception as e:
         reply = f"⚠️ AI error: {e}"
 
-    # Save AI response
     save_message(user_id, req.chat_id, "assistant", reply)
 
     return {
