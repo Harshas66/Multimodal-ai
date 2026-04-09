@@ -7,3 +7,4 @@ firebase-admin
 httpx
 supabase
 nltk
+huggingface_hub
