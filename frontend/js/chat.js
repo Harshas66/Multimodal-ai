@@ -2,15 +2,20 @@ import { auth } from "./firebase.js?v=3.3";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const API = (() => {
+  // override support
   if (window.API_ENDPOINT) return window.API_ENDPOINT;
+
   const stored = localStorage.getItem("apiEndpoint");
   if (stored) return stored;
+
+  // local dev
   if (["localhost", "127.0.0.1"].includes(window.location.hostname)) {
     return "http://127.0.0.1:8000";
   }
-  return window.location.origin;
-})();
 
+  // ✅ production backend (IMPORTANT)
+  return "https://multimodal-ai-backend-xu4a.onrender.com";
+})();
 const STORAGE_KEYS = {
   chats: "hybrid_chats",
   currentChatId: "hybrid_current_chat",
