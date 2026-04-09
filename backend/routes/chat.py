@@ -19,12 +19,17 @@ router = APIRouter()
 # ✅ SUPABASE SAVE FUNCTION (TOP LEVEL - CORRECT)
 def save_chat_supabase(user_id, chat_id, role, message):
     try:
+        if not supabase:
+            print("Supabase not available, skipping save")
+            return
+
         supabase.table("chats").insert({
             "user_id": user_id,
             "chat_id": chat_id,
             "role": role,
             "message": message
         }).execute()
+
     except Exception as e:
         print("Supabase save error:", e)
 
