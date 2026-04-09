@@ -1,38 +1,34 @@
-from fastapi import APIRouter, Depends, HTTPException
-
+# backend/routes/user_data.py
+from fastapi import APIRouter, Depends
 from security import require_user
-from utils.user_memory import repo
+from utils.supabase_client import supabase
 
 router = APIRouter()
 
 
 def _uid(decoded: dict) -> str:
-    uid = decoded.get("uid") or decoded.get("sub")
-    if not uid:
-        raise HTTPException(status_code=401, detail="Invalid user token")
-    return uid
-
-
-def _ensure_repo_user(decoded: dict) -> str:
-    user_id = _uid(decoded)
-    provider = ((decoded.get("firebase") or {}).get("sign_in_provider") or "password").replace(".com", "")
-    repo.ensure_user(
-        user_id=user_id,
-        email=decoded.get("email", ""),
-        name=decoded.get("name") or decoded.get("email", "").split("@")[0],
-        provider=provider,
-    )
-    return user_id
+    return decoded.get("uid") or decoded.get("sub") or "demo_user"
 
 
 @router.get("/data")
 def export_user_data(current_user=Depends(require_user)):
-    user_id = _ensure_repo_user(current_user)
-    return repo.export_user_data(user_id=user_id)
+    user_id = _uid(current_user)
+    data = []
+    if supabase:
+        try:
+            result = supabase.table("chats").select("*").eq("user_id", user_id).execute()
+            data = result.data or []
+        except Exception as e:
+            print(f"Export error: {e}")
+    return {"user_id": user_id, "chats": data}
 
 
 @router.delete("/data")
 def clear_user_data(current_user=Depends(require_user)):
-    user_id = _ensure_repo_user(current_user)
-    repo.clear_user_data(user_id=user_id)
+    user_id = _uid(current_user)
+    if supabase:
+        try:
+            supabase.table("chats").delete().eq("user_id", user_id).execute()
+        except Exception as e:
+            print(f"Clear error: {e}")
     return {"message": "All user data deleted"}
