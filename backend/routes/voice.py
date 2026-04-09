@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import speech_recognition as sr
 
 from memory.memory_manager import MemoryManager
-from backend.integrations.hf_integration import hf_simple_response
+from integrations.hf_integration import hf_simple_response
 
 router = APIRouter()
 memory = MemoryManager()

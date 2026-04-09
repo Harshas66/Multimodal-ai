@@ -3,8 +3,8 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from backend.core.firebase_admin import verify_token, init_firebase
-from backend.security import require_user
+from core.firebase_admin import verify_token, init_firebase
+from security import require_user
 from memory.repository import repo
 
 router = APIRouter()

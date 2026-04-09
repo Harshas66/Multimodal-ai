@@ -1,10 +1,10 @@
 from typing import Optional
 import re
 
-from backend.integrations.hf_integration import hf_simple_response
-from backend.integrations.openai_integration import openai_response
-from backend.integrations.google_integration import google_gemini_response
-from backend.integrations.web_search import tavily_search
+from integrations.hf_integration import hf_simple_response
+from integrations.openai_integration import openai_response
+from integrations.google_integration import google_gemini_response
+from integrations.web_search import tavily_search
 
 
 def is_image_request(prompt: str):

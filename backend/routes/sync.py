@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Literal
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from backend.security import require_user
+from security import require_user
 from memory.repository import repo
 
 router = APIRouter()

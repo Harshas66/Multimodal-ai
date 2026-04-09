@@ -1,6 +1,6 @@
 #backend/routes/sentiment.py
 from fastapi import APIRouter, Request
-from backend.agents.sentiment_agent import handle
+from agents.sentiment_agent import handle
 
 router = APIRouter()
 

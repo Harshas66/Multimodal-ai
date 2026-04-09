@@ -8,7 +8,7 @@ from typing import Optional
 from PIL import Image
 import torch
 from transformers import BlipProcessor, BlipForConditionalGeneration
-from backend.integrations.hf_integration import hf_simple_response  # ✅ import once
+from integrations.hf_integration import hf_simple_response  # ✅ import once
 
 router = APIRouter()
 
