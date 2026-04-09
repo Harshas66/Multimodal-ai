@@ -1,13 +1,25 @@
-fastapi
+# API handling
+fastapi    
 uvicorn[standard]
 pydantic
+
 python-dotenv
+# HTTP calls
 requests
-firebase-admin
 httpx
+# database/auth
+firebase-admin
 supabase
+# text processing
 nltk
 huggingface_hub
+# websearch
 tavily-python
+# file upload handling
 python-multipart
+# auth
 PyJWT
+
+transformers
+torch
+Pillow
