@@ -9,7 +9,7 @@ print(f"✅ .env loaded from: {env_path}")
 from agents import sentiment_agent, translation_agent, summarization_agent
 from integrations.hf_integration import hf_llama_stream
 from integrations.google_integration import google_gemini_response
-from backend.agents import sentiment_agent
+from agents import sentiment_agent
 class HeadAgent:
     """Main routing controller — like ChatGPT’s orchestration brain."""
     

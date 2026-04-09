@@ -1,10 +1,9 @@
-# backend/app.py
 import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.routes import auth, chat, vision, voice, sync, memory, user_data
+from routes import auth, chat, vision, voice, sync, memory, user_data
 import nltk
 
 app = FastAPI(
@@ -12,7 +11,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Dynamic CORS from env var — set ALLOWED_ORIGINS on Render
+# Dynamic CORS from env var
 _origins_env = os.getenv("ALLOWED_ORIGINS", "")
 origins = [o.strip() for o in _origins_env.split(",") if o.strip()]
 origins += [
@@ -24,18 +23,18 @@ origins += [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=origins if origins else ["*"],  # safe fallback
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# NLTK downloads (cached after first run)
+# NLTK downloads (cached)
 nltk.download("stopwords", quiet=True)
 nltk.download("punkt", quiet=True)
 nltk.download("wordnet", quiet=True)
 
-# API Routers
+# Routers
 app.include_router(chat.router,      prefix="/api/chat",    tags=["Chat"])
 app.include_router(vision.router,    prefix="/api/vision",  tags=["Vision"])
 app.include_router(voice.router,     prefix="/api/voice",   tags=["Voice"])
@@ -43,6 +42,11 @@ app.include_router(sync.router,      prefix="/api/sync",    tags=["Sync"])
 app.include_router(memory.router,    prefix="/api/memory",  tags=["Memory"])
 app.include_router(user_data.router, prefix="/api/user",    tags=["User"])
 app.include_router(auth.router,      prefix="/api/auth",    tags=["Auth"])
+
+
+@app.get("/")
+def root():
+    return {"message": "Backend is running 🚀"}
 
 
 @app.get("/health")
