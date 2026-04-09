@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+import uuid
 
 from orchestrator.router import smart_route
 from security import require_user
@@ -10,27 +11,45 @@ from utils.supabase_client import supabase
 router = APIRouter()
 
 
+# ✅ REQUEST MODEL
 class ChatRequest(BaseModel):
     chat_id: str
     message: str
 
 
-def _uid(decoded: dict) -> str:
-    return decoded.get("uid", "demo_user")
+# ✅ EXTRACT USER ID SAFELY
+def _uid(user: dict) -> str:
+    if not user or "id" not in user:
+        raise HTTPException(status_code=401, detail="Invalid user")
+    return user["id"]
 
 
-# ✅ VERIFY CHAT BELONGS TO USER (CRITICAL 🔥)
-def verify_chat_ownership(user_id, chat_id):
+# ✅ VERIFY OR CREATE CHAT (🔥 FIXED)
+def verify_or_create_chat(user_id, chat_id):
     try:
+        # Check if chat exists
         res = supabase.table("chats") \
-            .select("id") \
+            .select("id, user_id") \
             .eq("id", chat_id) \
-            .eq("user_id", user_id) \
             .execute()
 
-        return bool(res.data)
+        if res.data:
+            # Chat exists → verify ownership
+            if res.data[0]["user_id"] != user_id:
+                return False
+            return True
+
+        # 🚀 Chat does NOT exist → create it
+        supabase.table("chats").insert({
+            "id": chat_id,
+            "user_id": user_id
+        }).execute()
+
+        print("✅ New chat created:", chat_id)
+        return True
+
     except Exception as e:
-        print("Ownership check error:", e)
+        print("❌ Chat verify/create error:", e)
         return False
 
 
@@ -44,7 +63,7 @@ def save_message(user_id, chat_id, role, content):
             "content": content
         }).execute()
     except Exception as e:
-        print("Supabase insert error:", e)
+        print("❌ Supabase insert error:", e)
 
 
 # ✅ GET CHAT HISTORY
@@ -60,7 +79,7 @@ def get_chat_history(user_id, chat_id):
         return res.data or []
 
     except Exception as e:
-        print("Fetch error:", e)
+        print("❌ Fetch error:", e)
         return []
 
 
@@ -68,6 +87,7 @@ def get_chat_history(user_id, chat_id):
 @router.post("/ask")
 def ask(req: ChatRequest, current_user=Depends(require_user)):
 
+    # ✅ GET USER ID
     user_id = _uid(current_user)
 
     # ✅ VALIDATIONS
@@ -77,16 +97,17 @@ def ask(req: ChatRequest, current_user=Depends(require_user)):
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
-    print("USER:", user_id, "CHAT:", req.chat_id)
+    print("👤 USER:", user_id)
+    print("💬 CHAT:", req.chat_id)
 
-    # 🔥 CRITICAL: CHECK OWNERSHIP
-    if not verify_chat_ownership(user_id, req.chat_id):
+    # 🔥 VERIFY OR CREATE CHAT (FIXED)
+    if not verify_or_create_chat(user_id, req.chat_id):
         raise HTTPException(status_code=403, detail="Unauthorized chat access")
 
     # ✅ SAVE USER MESSAGE
     save_message(user_id, req.chat_id, "user", req.message)
 
-    # ✅ FETCH HISTORY (ONLY THIS USER + CHAT)
+    # ✅ FETCH HISTORY
     history = get_chat_history(user_id, req.chat_id)
 
     # ✅ BUILD CONTEXT
