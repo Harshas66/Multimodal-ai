@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from security import require_user
-from memory.repository import repo
+from utils.user_memory import repo
 
 router = APIRouter()
 

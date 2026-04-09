@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from security import require_user
-from memory.repository import repo
+from utils.user_memory import repo
 
 router = APIRouter()
 

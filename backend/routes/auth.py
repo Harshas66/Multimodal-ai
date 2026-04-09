@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.firebase_admin import verify_token, init_firebase
 from security import require_user
-from memory.repository import repo
+from utils.user_memory import repo
 
 router = APIRouter()
 
