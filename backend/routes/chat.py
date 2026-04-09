@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 
-# SAFE IMPORTS (prevent router crash → avoids 404)
+from utils.image_analyzer import analyze_image
+
+# SAFE IMPORTS (prevent crash → avoids 404)
 try:
     from orchestrator.router import smart_route
 except:
@@ -14,7 +16,7 @@ try:
     from security import require_user
 except:
     def require_user():
-        return {"id": "test-user"}  # fallback for testing
+        return {"id": "test-user"}  # fallback
 
 try:
     from utils.supabase_client import supabase
@@ -25,10 +27,11 @@ except:
 router = APIRouter()
 
 
-# ✅ REQUEST MODEL
+# ✅ REQUEST MODEL (UPDATED FOR IMAGE SUPPORT)
 class ChatRequest(BaseModel):
     chat_id: Optional[str] = None
-    message: str
+    message: Optional[str] = ""
+    image_url: Optional[str] = None   # 🔥 IMAGE SUPPORT
     session_id: Optional[str] = None
     title: Optional[str] = None
 
@@ -38,7 +41,7 @@ def _uid(user: dict) -> str:
     return user.get("id", "test-user")
 
 
-# ✅ SAFE CHAT CREATE
+# ✅ VERIFY / CREATE CHAT
 def verify_or_create_chat(user_id, chat_id, title=None):
     if not supabase:
         return True
@@ -62,7 +65,7 @@ def verify_or_create_chat(user_id, chat_id, title=None):
 
     except Exception as e:
         print("❌ Chat error:", e)
-        return True  # allow flow
+        return True
 
 
 # ✅ SAVE MESSAGE
@@ -101,38 +104,64 @@ def get_chat_history(user_id, chat_id):
         return []
 
 
-# 🚀 MAIN CHAT API
+# 🚀 MAIN CHAT API (MULTIMODAL)
 @router.post("/ask")
 def ask(req: ChatRequest, current_user=Depends(require_user)):
 
     user_id = _uid(current_user)
 
-    if not req.message.strip():
-        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    # ✅ Validate input
+    if not req.message and not req.image_url:
+        raise HTTPException(status_code=400, detail="Message or image required")
 
-    # ✅ Ensure chat_id exists
-    chat_id = req.chat_id or "chat_" + user_id
+    chat_id = req.chat_id or f"chat_{user_id}"
 
     # ✅ Verify/Create chat
     verify_or_create_chat(user_id, chat_id, req.title)
 
-    # ✅ Save user message
-    save_message(user_id, chat_id, "user", req.message)
+    # ✅ Save user input
+    user_content = req.message if req.message else "[Image]"
+    if req.image_url:
+        user_content += f" (Image: {req.image_url})"
+
+    save_message(user_id, chat_id, "user", user_content)
 
     # ✅ Get history
     history = get_chat_history(user_id, chat_id)
     context = "\n".join([f"{m['role']}: {m['content']}" for m in history])
 
-    # ✅ AI RESPONSE (SAFE)
+    # ✅ AI RESPONSE
     try:
-        if smart_route:
+        # 🔥 CASE 1: IMAGE PRESENT
+        if req.image_url:
+            caption = analyze_image(req.image_url)
+
+            # 🔥 IMAGE + TEXT (BEST CASE)
+            if req.message:
+                combined_input = f"""
+                Image description: {caption}
+                User question: {req.message}
+                """
+
+                if smart_route:
+                    reply = smart_route(combined_input, "")
+                else:
+                    reply = f"🖼️ {caption}\n\n💬 {req.message}"
+
+            # 🔥 IMAGE ONLY
+            else:
+                reply = f"🖼️ Image Analysis:\n{caption}"
+
+        # 🔥 CASE 2: TEXT ONLY
+        elif smart_route:
             reply = smart_route(context + "\nuser: " + req.message, "")
         else:
             reply = f"Echo: {req.message}"
+
     except Exception as e:
         reply = f"⚠️ AI error: {str(e)}"
 
-    # ✅ Save response
+    # ✅ Save assistant response
     save_message(user_id, chat_id, "assistant", reply)
 
     return {
@@ -142,7 +171,7 @@ def ask(req: ChatRequest, current_user=Depends(require_user)):
     }
 
 
-# 🚀 SIMPLE TEST ROUTE (IMPORTANT FOR DEBUG)
+# 🚀 TEST ROUTE
 @router.get("/")
 def test_chat():
     return {"message": "Chat route working ✅"}
