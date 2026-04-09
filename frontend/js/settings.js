@@ -11,11 +11,19 @@ import {
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const API = (() => {
+  // Allow override (optional)
   if (window.API_ENDPOINT) return window.API_ENDPOINT;
+
   const stored = localStorage.getItem("apiEndpoint");
   if (stored) return stored;
-  if (["localhost", "127.0.0.1"].includes(window.location.hostname)) return "http://127.0.0.1:8000";
-  return window.location.origin;
+
+  // Local development
+  if (["localhost", "127.0.0.1"].includes(window.location.hostname)) {
+    return "http://127.0.0.1:8000";
+  }
+
+  // ✅ YOUR RENDER BACKEND (FINAL)
+  return "https://multimodal-ai-backend-xu4a.onrender.com";
 })();
 
 const KEYS = {
