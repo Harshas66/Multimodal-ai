@@ -35,13 +35,16 @@ nltk.download("punkt", quiet=True)
 nltk.download("wordnet", quiet=True)
 
 # Routers
-app.include_router(chat.router,      prefix="/api/chat",    tags=["Chat"])
-app.include_router(vision.router,    prefix="/api/vision",  tags=["Vision"])
-app.include_router(voice.router,     prefix="/api/voice",   tags=["Voice"])
-app.include_router(sync.router,      prefix="/api/sync",    tags=["Sync"])
-app.include_router(memory.router,    prefix="/api/memory",  tags=["Memory"])
-app.include_router(user_data.router, prefix="/api/user",    tags=["User"])
-app.include_router(auth.router,      prefix="/api/auth",    tags=["Auth"])
+try:
+    app.include_router(chat.router, prefix="/api/chat")
+    app.include_router(vision.router, prefix="/api/vision")
+    app.include_router(voice.router, prefix="/api/voice")
+    app.include_router(sync.router, prefix="/api/sync")
+    app.include_router(memory.router, prefix="/api/memory")
+    app.include_router(user_data.router, prefix="/api/user")
+    app.include_router(auth.router, prefix="/api/auth")
+except Exception as e:
+    print("🚨 ROUTER ERROR:", e)
 
 
 @app.get("/")
