@@ -20,7 +20,10 @@ function getUserId() {
 const USER_ID = getUserId();
 
 document.addEventListener("DOMContentLoaded", () => {
-  const API = "http://127.0.0.1:8000";
+  // Set window.API_BASE in config.js to point to your Render backend URL in production
+  const API = (typeof window.API_BASE !== "undefined" && window.API_BASE)
+    ? window.API_BASE
+    : "http://127.0.0.1:8000";
 
   /* ---------- ELEMENTS ---------- */
   const chatBox = document.getElementById("chatBox");

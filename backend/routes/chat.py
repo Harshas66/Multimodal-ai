@@ -1,4 +1,3 @@
-#backend/routes/chat.py
 import json
 import uuid
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
@@ -8,12 +7,26 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from backend.orchestrator.router import smart_route
-from backend.security import require_user
-from backend.utils.user_memory import extract_memory_facts, format_memory_context
-from memory.repository import repo
+from orchestrator.router import smart_route
+from security import require_user
+from utils.user_memory import extract_memory_facts, format_memory_context
+from utils.user_memory import repo
+from utils.supabase_client import supabase
 
 router = APIRouter()
+
+
+# ✅ SUPABASE SAVE FUNCTION (TOP LEVEL - CORRECT)
+def save_chat_supabase(user_id, chat_id, role, message):
+    try:
+        supabase.table("chats").insert({
+            "user_id": user_id,
+            "chat_id": chat_id,
+            "role": role,
+            "message": message
+        }).execute()
+    except Exception as e:
+        print("Supabase save error:", e)
 
 
 class ChatRequest(BaseModel):
@@ -110,14 +123,13 @@ def _generate_reply(user_input: str, context: str) -> str:
         output = "I am taking too long to respond right now. Please try again."
     except Exception as exc:
         output = f"Assistant routing error: {exc}"
-    if isinstance(output, dict):
-        return json.dumps(output, ensure_ascii=False)
     return str(output)
 
 
 @router.post("/ask")
 def ask(req: ChatRequest, current_user=Depends(require_user)):
     user_id = _ensure_repo_user(current_user)
+
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
@@ -128,146 +140,39 @@ def ask(req: ChatRequest, current_user=Depends(require_user)):
         title=req.title or "New Chat",
     )
 
+    # ✅ SAVE USER MESSAGE
     saved_user = repo.save_message(
         chat_id=req.chat_id,
         role="user",
         content=req.message,
         source=req.source,
     )
+
+    save_chat_supabase(user_id, req.chat_id, "user", req.message)
+
+    # Memory
     for fact in extract_memory_facts(req.message):
         repo.upsert_memory(user_id=user_id, key=fact["key"], value=fact["value"])
 
-    context = _format_context_lines(user_id=user_id, enabled=req.memory_enabled, current_message=req.message)
+    # Generate AI
+    context = _format_context_lines(user_id, req.memory_enabled, req.message)
+
     try:
         reply = _generate_reply(req.message, context)
-    except Exception as e:
-        print("Generation error:", e)
+    except Exception:
         reply = "⚠️ AI failed to generate a response."
 
+    # ✅ SAVE AI RESPONSE
     saved_assistant = repo.save_message(
         chat_id=req.chat_id,
         role="assistant",
         content=reply,
         source=req.source,
     )
+
+    save_chat_supabase(user_id, req.chat_id, "assistant", reply)
 
     return {
         "chat_id": req.chat_id,
-        "user_message": saved_user,
-        "assistant_message": saved_assistant,
         "reply": reply,
     }
-
-
-@router.post("/stream")
-def stream(req: ChatRequest, current_user=Depends(require_user)):
-    user_id = _ensure_repo_user(current_user)
-    if not req.message.strip():
-        raise HTTPException(status_code=400, detail="Message cannot be empty")
-
-    repo.create_chat_if_missing(
-        chat_id=req.chat_id,
-        user_id=user_id,
-        session_id=req.session_id or req.chat_id,
-        title=req.title or "New Chat",
-    )
-    repo.save_message(chat_id=req.chat_id, role="user", content=req.message, source=req.source)
-    for fact in extract_memory_facts(req.message):
-        repo.upsert_memory(user_id=user_id, key=fact["key"], value=fact["value"])
-
-    context = _format_context_lines(user_id=user_id, enabled=req.memory_enabled, current_message=req.message)
-    try:
-        reply = _generate_reply(req.message, context)
-    except Exception:
-        reply = "I could not generate a response right now. Please try again."
-    saved_assistant = repo.save_message(chat_id=req.chat_id, role="assistant", content=reply, source=req.source)
-
-    def event_stream() -> Generator[str, None, None]:
-        yield f"data: {json.dumps({'type': 'meta', 'chat_id': req.chat_id, 'assistant_message_id': saved_assistant['id']})}\n\n"
-        chunk_size = 42
-        for idx in range(0, len(reply), chunk_size):
-            chunk = reply[idx:idx + chunk_size]
-            yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
-        yield "data: [DONE]\n\n"
-
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )
-
-
-@router.post("/regenerate")
-def regenerate(req: RegenerateRequest, current_user=Depends(require_user)):
-    user_id = _ensure_repo_user(current_user)
-    repo.create_chat_if_missing(chat_id=req.chat_id, user_id=user_id, session_id=req.chat_id, title="New Chat")
-
-    context = _format_context_lines(user_id=user_id, enabled=req.memory_enabled, current_message=req.message)
-    try:
-        reply = _generate_reply(req.message, context)
-    except Exception:
-        reply = "I could not generate a response right now. Please try again."
-    saved_assistant = repo.save_message(
-        chat_id=req.chat_id,
-        role="assistant",
-        content=reply,
-        source=req.source,
-    )
-    return {"assistant_message": saved_assistant, "reply": reply}
-
-
-@router.get("/history")
-def history(search: str = Query(default=""), current_user=Depends(require_user)):
-    user_id = _ensure_repo_user(current_user)
-    data = repo.export_user_data(user_id=user_id)
-    chats = data.get("chats", [])
-    if search:
-        term = search.strip().lower()
-        chats = [chat for chat in chats if term in str(chat.get("title", "")).lower()]
-    return {"chats": chats, "memory": data.get("memory", [])}
-
-
-@router.post("/save")
-def save_message(req: SaveMessageRequest, current_user=Depends(require_user)):
-    user_id = _ensure_repo_user(current_user)
-    repo.create_chat_if_missing(
-        chat_id=req.chat_id,
-        user_id=user_id,
-        session_id=req.session_id or req.chat_id,
-        title=req.title or "New Chat",
-    )
-    saved = repo.save_message(
-        chat_id=req.chat_id,
-        role=req.role,
-        content=req.message,
-        source=req.source,
-    )
-    if req.role == "user":
-        for fact in extract_memory_facts(req.message):
-            repo.upsert_memory(user_id=user_id, key=fact["key"], value=fact["value"])
-    return {"message": "Saved", "saved_message": saved}
-
-
-@router.get("/{chat_id}/messages")
-def messages(chat_id: str, current_user=Depends(require_user)):
-    user_id = _ensure_repo_user(current_user)
-    user_chats = {item["id"] for item in repo.list_chats(user_id=user_id)}
-    if chat_id not in user_chats:
-        raise HTTPException(status_code=404, detail="Chat not found")
-    return {"messages": repo.list_messages(chat_id=chat_id)}
-
-
-@router.patch("/{chat_id}")
-def rename_chat(chat_id: str, payload: ChatRenameRequest, current_user=Depends(require_user)):
-    repo.rename_chat(chat_id=chat_id, user_id=_ensure_repo_user(current_user), title=payload.title)
-    return {"message": "Chat title updated"}
-
-
-@router.delete("/{chat_id}")
-def delete_chat(chat_id: str, current_user=Depends(require_user)):
-    repo.delete_chat(chat_id=chat_id, user_id=_ensure_repo_user(current_user))
-    return {"message": "Chat deleted"}

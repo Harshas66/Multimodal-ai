@@ -1,37 +1,44 @@
-# Virtual Environment
+# ─── Python ───────────────────────────────────
 venv/
-
-# Python cache
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.egg-info/
+dist/
+build/
 
-# Environment variables
+# ─── Environment / Secrets ────────────────────
 .env
+backend/.env
 
-# OS files
-.DS_Store
-
-# Large model files (if any)
-*.pt
-*.pth
-*.bin
-
-# Secrets
+# ─── Firebase credentials (NEVER commit) ──────
+firebase-service-account.json
 backend/core/firebase-service-account.json
 firebaseauthcode.txt
 
-# Memory & user data
-memory/
-*.json
+# ─── Database (SQLite local file) ─────────────
+memory/app.db
+memory/chats/
+memory/profile/
+memory/privacy/
+memory/study/
+memory/*.json
+memory/long_*.json
 
-# Node
+# ─── AI model weights ─────────────────────────
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# ─── OS / Editor ──────────────────────────────
+.DS_Store
+Thumbs.db
+.vercel
+
+# ─── Node ─────────────────────────────────────
 node_modules/
 
-# Python
-venv/
-__pycache__/
-*.pyc
-.env
-.vercel
+# ─── Vercel + pycache build artifacts ─────────
+.vercel/

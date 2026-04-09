@@ -1,7 +1,61 @@
+# ─────────────────────────────────────────────
+# Core Web Framework
+# ─────────────────────────────────────────────
 fastapi
-uvicorn
+uvicorn[standard]
+python-multipart       # file uploads (UploadFile)
+pydantic
+
+# ─────────────────────────────────────────────
+# Auth & Security
+# ─────────────────────────────────────────────
+firebase-admin         # Google token verification
+PyJWT                  # JWT handling
+
+# ─────────────────────────────────────────────
+# Database
+# ─────────────────────────────────────────────
+psycopg[binary]        # PostgreSQL (production)
+# sqlite3 is built into Python - no install needed
+
+# ─────────────────────────────────────────────
+# Environment & HTTP
+# ─────────────────────────────────────────────
 python-dotenv
 requests
-firebase-admin
-PyJWT
-psycopg[binary]
+httpx
+
+# ─────────────────────────────────────────────
+# LLM Integrations
+# ─────────────────────────────────────────────
+huggingface-hub        # HuggingFace InferenceClient
+openai                 # OpenAI SDK
+google-generativeai    # Google Gemini (google.generativeai)
+tavily-python          # Tavily web search (from tavily import TavilyClient)
+
+# ─────────────────────────────────────────────
+# Vision (BLIP image captioning)
+# ─────────────────────────────────────────────
+Pillow                 # PIL.Image
+torch                  # torch + CUDA support
+transformers           # BlipProcessor, BlipForConditionalGeneration
+
+# ─────────────────────────────────────────────
+# Voice (Speech Recognition)
+# ─────────────────────────────────────────────
+SpeechRecognition      # speech_recognition (sr)
+PyAudio                # required by SpeechRecognition for microphone input
+
+# ─────────────────────────────────────────────
+# NLP & Agents
+# ─────────────────────────────────────────────
+nltk                   # tokenisation, stopwords, wordnet
+text2emotion           # sentiment_agent (te.get_emotion)
+emoji                  # emoji support in sentiment_agent
+deep-translator        # translation_agent (GoogleTranslator)
+
+# ─────────────────────────────────────────────
+# Vector Memory (ChromaDB embeddings)
+# ─────────────────────────────────────────────
+chromadb               # VectorStore / chromadb.Client
+sentence-transformers  # SentenceTransformer embeddings
