@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: multimodal-ai-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: HF_TOKEN
+        sync: false
+      - key: HF_MODEL_PRIMARY
+        value: meta-llama/Llama-3.1-8B-Instruct
+      - key: HF_MAX_TOKENS
+        value: "700"
+      - key: HF_TEMPERATURE
+        value: "0.7"
+      - key: HF_TOP_P
+        value: "0.9"
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: "https://multimodal-ai.vercel.app,https://YOUR-PROJECT.vercel.app"
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXP_HOURS
+        value: "168"
+    healthCheckPath: /health
+    autoDeploy: true

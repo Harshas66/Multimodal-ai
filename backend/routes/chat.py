@@ -11,7 +11,6 @@ from utils.supabase_client import supabase
 router = APIRouter()
 
 
-# ✅ SUPABASE SAVE
 def save_chat_supabase(user_id, chat_id, role, message):
     try:
         if not supabase:
@@ -45,16 +44,16 @@ def ask(req: ChatRequest, current_user=Depends(require_user)):
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
-    # ✅ Save user message
+    # Save user message
     save_chat_supabase(user_id, req.chat_id, "user", req.message)
 
-    # ✅ Generate AI response
+    # Generate AI response
     try:
         reply = smart_route(req.message, req.message)
     except Exception as e:
         reply = f"⚠️ AI error: {e}"
 
-    # ✅ Save assistant reply
+    # Save AI response
     save_chat_supabase(user_id, req.chat_id, "assistant", reply)
 
     return {

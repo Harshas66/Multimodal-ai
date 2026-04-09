@@ -1,94 +1,79 @@
 # backend/routes/vision.py
+# Uses HuggingFace Inference API for image captioning (no local model download)
 
 import io
 import os
-from fastapi import APIRouter, UploadFile, File, HTTPException
+import httpx
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from PIL import Image
-import torch
-from transformers import BlipProcessor, BlipForConditionalGeneration
-from integrations.hf_integration import hf_simple_response  # ✅ import once
+
+from integrations.hf_integration import hf_simple_response
 
 router = APIRouter()
 
-# ==================== MODEL LOADING ====================
+HF_TOKEN = os.getenv("HF_TOKEN", "")
+HF_VISION_MODEL = os.getenv("HF_VISION_MODEL", "Salesforce/blip-image-captioning-large")
+HF_API_URL = f"https://api-inference.huggingface.co/models/{HF_VISION_MODEL}"
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-BLIP_MODEL_ID = os.getenv("BLIP_MODEL", "Salesforce/blip-image-captioning-large")
-
-try:
-    processor = BlipProcessor.from_pretrained(BLIP_MODEL_ID)
-    model = BlipForConditionalGeneration.from_pretrained(BLIP_MODEL_ID)
-    model.to(DEVICE)
-    model.eval()
-    print(f"✅ BLIP model loaded on {DEVICE}: {BLIP_MODEL_ID}")
-except Exception as e:
-    processor = None
-    model = None
-    print("⚠️ Failed to load BLIP model at import time:", e)
-
-
-# ==================== RESPONSE SCHEMA ====================
 
 class VisionResponse(BaseModel):
     reply: str
     details: Optional[dict] = None
 
 
-# ==================== MAIN ENDPOINT ====================
-
 @router.post("/analyze", response_model=VisionResponse)
-async def analyze_image(file: UploadFile = File(...)):
+async def analyze_image(
+    file: UploadFile = File(...),
+    query: str = Form(default="")
+):
     """
-    Analyze an uploaded image and generate a detailed human-like explanation.
-    Uses BLIP for captioning and LLaMA for reasoning.
+    Analyze an uploaded image using HuggingFace Inference API (BLIP).
+    No local model download required — serverless friendly.
     """
-
-    # Check model
-    if processor is None or model is None:
-        raise HTTPException(status_code=503, detail="Vision model not loaded on server.")
-
-    # Validate file type
-    if not file.content_type.startswith("image/"):
+    if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Uploaded file is not an image.")
 
-    try:
-        # Read and process image
-        contents = await file.read()
-        image = Image.open(io.BytesIO(contents)).convert("RGB")
+    contents = await file.read()
 
-        inputs = processor(images=image, return_tensors="pt").to(DEVICE)
-        with torch.no_grad():
-            output_ids = model.generate(**inputs, max_length=80, num_beams=4, early_stopping=True)
-
-        # Step 1️⃣: BLIP caption
-        caption = processor.decode(output_ids[0], skip_special_tokens=True).strip()
-
-        # Step 2️⃣: Ask LLaMA to explain in detail
-        context_prompt = (
-            f"The BLIP vision model described this image as: '{caption}'.\n"
-            f"Now provide a clear and detailed explanation of what this image might represent. "
-            f"Explain like a human — describe the setting, objects, and possible context or purpose. "
-            f"Avoid repeating the same sentence; make it natural and insightful."
-        )
-
+    # ── Step 1: Caption via HF Inference API ──────────────────
+    caption = ""
+    if HF_TOKEN:
         try:
-            refined_explanation = hf_simple_response(context_prompt)
+            headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(HF_API_URL, headers=headers, content=contents)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if isinstance(data, list) and data:
+                        caption = data[0].get("generated_text", "")
+                    elif isinstance(data, dict):
+                        caption = data.get("generated_text", "")
         except Exception as e:
-            refined_explanation = f"(⚠️ Refinement failed: {e})"
+            print(f"⚠️ HF Vision API error: {e}")
 
-        # Step 3️⃣: Details metadata
-        details = {
-            "caption": caption,
-            "width": image.width,
-            "height": image.height,
-            "content_type": file.content_type,
-            "model": BLIP_MODEL_ID,
-            "device": DEVICE,
-        }
+    if not caption:
+        caption = "an image provided by the user"
 
-        return VisionResponse(reply=refined_explanation, details=details)
+    # ── Step 2: Enrich with LLM reasoning ─────────────────────
+    user_q = query.strip() or "Describe what you see in this image."
+    context_prompt = (
+        f"A vision model analyzed an image and generated this caption: '{caption}'.\n"
+        f"User's question about the image: {user_q}\n\n"
+        f"Based on the caption, provide a helpful, detailed, human-like response to the user's question. "
+        f"Be specific and insightful."
+    )
 
+    try:
+        reply = hf_simple_response(context_prompt)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Image analysis failed: {str(e)}")
+        reply = f"Image caption: {caption}. (AI enrichment failed: {e})"
+
+    return VisionResponse(
+        reply=reply,
+        details={
+            "caption": caption,
+            "model": HF_VISION_MODEL,
+            "content_type": file.content_type,
+        }
+    )

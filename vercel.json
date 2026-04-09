@@ -1,9 +1,23 @@
 {
   "version": 2,
   "builds": [
-    { "src": "frontend/**", "use": "@vercel/static" }
+    {
+      "src": "frontend/**",
+      "use": "@vercel/static"
+    }
   ],
   "routes": [
+    { "src": "/", "dest": "/frontend/index.html" },
+    { "src": "/chat", "dest": "/frontend/chat.html" },
+    { "src": "/chat.html", "dest": "/frontend/chat.html" },
+    { "src": "/signup", "dest": "/frontend/signup.html" },
+    { "src": "/signup.html", "dest": "/frontend/signup.html" },
+    { "src": "/forgot-password", "dest": "/frontend/forgot-password.html" },
+    { "src": "/forgot-password.html", "dest": "/frontend/forgot-password.html" },
+    { "src": "/reset-password", "dest": "/frontend/reset-password.html" },
+    { "src": "/reset-password.html", "dest": "/frontend/reset-password.html" },
+    { "src": "/settings", "dest": "/frontend/settings.html" },
+    { "src": "/settings.html", "dest": "/frontend/settings.html" },
     { "src": "/(.*)", "dest": "/frontend/$1" }
   ]
 }
