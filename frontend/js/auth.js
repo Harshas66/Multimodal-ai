@@ -11,13 +11,20 @@ import {
 } from "./firebase.js?v=3.3";
 
 const API = (() => {
+  // ✅ Priority 1: global override (optional)
   if (window.API_ENDPOINT) return window.API_ENDPOINT;
+
+  // ✅ Priority 2: localStorage override (optional)
   const stored = localStorage.getItem("apiEndpoint");
   if (stored) return stored;
+
+  // ✅ Priority 3: localhost (dev)
   if (["localhost", "127.0.0.1"].includes(window.location.hostname)) {
     return "http://127.0.0.1:8000";
   }
-  return window.location.origin;
+
+  // ✅ FINAL: PRODUCTION BACKEND (IMPORTANT)
+  return "https://multimodal-ai-backend-xu4a.onrender.com";
 })();
 
 const dom = {
