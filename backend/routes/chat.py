@@ -126,3 +126,21 @@ def ask(req: ChatRequest, current_user=Depends(require_user)):
         "chat_id": req.chat_id,
         "reply": reply,
     }
+
+@router.get("/history")
+def get_history(current_user=Depends(require_user)):
+    user_id = _uid(current_user)
+
+    try:
+        chats = supabase.table("chats") \
+            .select("*") \
+            .eq("user_id", user_id) \
+            .execute()
+
+        return {
+            "chats": chats.data or []
+        }
+
+    except Exception as e:
+        print("❌ History error:", e)
+        raise HTTPException(status_code=500, detail="Failed to fetch history")
