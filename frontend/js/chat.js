@@ -846,7 +846,7 @@ async function askAssistant(chat, userMessage, { replaceAssistantAt = null } = {
     memory_enabled: memoryEnabled()
   };
 
-  const endpoint = replaceAssistantAt == null ? `${API}/api/chat/ask` : `${API}/api/chat/regenerate`;
+  const endpoint = `${API}/api/chat/ask`;
   const body =
     replaceAssistantAt == null
       ? payload
