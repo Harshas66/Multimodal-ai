@@ -1,4 +1,4 @@
-#backend/utils/security.py
+#backend/security.py
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import firebase_admin
@@ -55,10 +55,11 @@ def require_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
             except Exception as e:
                 print("❌ Supabase error:", e)
 
+        # ✅ 🔥 RETURN MUST BE INSIDE FUNCTION
         return {
             "id": user_id,
             "email": email,
-            "memory_enabled": memory_enabled   # 🔥 IMPORTANT
+            "memory_enabled": memory_enabled
         }
 
     except Exception as e:
