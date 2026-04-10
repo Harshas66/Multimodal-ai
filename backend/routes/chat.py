@@ -127,8 +127,28 @@ def ask(req: ChatRequest, current_user=Depends(require_user)):
     save_message(user_id, chat_id, "user", user_content)
 
     # ✅ Get history
+    memory_enabled = current_user.get("memory_enabled", True)
+
+# 🔥 IF MEMORY ON → use ALL chats
+if memory_enabled:
+    try:
+        if supabase:
+            res = supabase.table("messages") \
+                .select("*") \
+                .eq("user_id", user_id) \
+                .order("created_at") \
+                .execute()
+
+            history = res.data or []
+        else:
+            history = []
+    except:
+        history = []
+else:
+    # ❌ MEMORY OFF → only current chat
     history = get_chat_history(user_id, chat_id)
-    context = "\n".join([f"{m['role']}: {m['content']}" for m in history])
+
+context = "\n".join([f"{m['role']}: {m['content']}" for m in history])
 
     # ✅ AI RESPONSE
     try:
