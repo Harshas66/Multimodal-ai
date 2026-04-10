@@ -5,67 +5,48 @@ from pydantic import BaseModel
 from typing import Optional
 
 from utils.image_analyzer import analyze_image
+from utils.supabase_client import supabase
+from security import require_user
 
-# SAFE IMPORTS (prevent crash → avoids 404)
 try:
     from orchestrator.router import smart_route
 except:
     smart_route = None
 
-try:
-    from security import require_user
-except:
-    def require_user():
-        return {"id": "test-user"}  # fallback
-
-try:
-    from utils.supabase_client import supabase
-except:
-    supabase = None
-
 
 router = APIRouter()
 
 
-# ✅ REQUEST MODEL (UPDATED FOR IMAGE SUPPORT)
+# ✅ REQUEST MODEL
 class ChatRequest(BaseModel):
     chat_id: Optional[str] = None
     message: Optional[str] = ""
-    image_url: Optional[str] = None   # 🔥 IMAGE SUPPORT
+    image_url: Optional[str] = None
     session_id: Optional[str] = None
     title: Optional[str] = None
 
 
-# ✅ GET USER ID
+# ✅ USER ID
 def _uid(user: dict) -> str:
     return user.get("id", "test-user")
 
 
-# ✅ VERIFY / CREATE CHAT
-def verify_or_create_chat(user_id, chat_id, title=None):
+# ✅ GET CHAT HISTORY
+def get_chat_history(user_id, chat_id):
     if not supabase:
-        return True
+        return []
 
     try:
-        res = supabase.table("chats") \
-            .select("id, user_id") \
-            .eq("id", chat_id) \
+        res = supabase.table("messages") \
+            .select("*") \
+            .eq("user_id", user_id) \
+            .eq("chat_id", chat_id) \
+            .order("created_at") \
             .execute()
 
-        if res.data:
-            return res.data[0]["user_id"] == user_id
-
-        supabase.table("chats").insert({
-            "id": chat_id,
-            "user_id": user_id,
-            "title": title or "New Chat"
-        }).execute()
-
-        return True
-
-    except Exception as e:
-        print("❌ Chat error:", e)
-        return True
+        return res.data or []
+    except:
+        return []
 
 
 # ✅ SAVE MESSAGE
@@ -80,79 +61,33 @@ def save_message(user_id, chat_id, role, content):
             "role": role,
             "content": content
         }).execute()
-    except Exception as e:
-        print("❌ Save error:", e)
-
-
-memory_enabled = True
-
-# ✅ Fetch memory setting
-if supabase:
-    try:
-        res = supabase.table("users") \
-            .select("memory_enabled") \
-            .eq("id", user_id) \
-            .execute()
-
-        if res.data:
-            memory_enabled = res.data[0].get("memory_enabled", True)
     except:
         pass
 
 
-# 🔥 MEMORY LOGIC
-if memory_enabled:
-    # ✅ ALL chats (global memory)
-    try:
-        res = supabase.table("messages") \
-            .select("*") \
-            .eq("user_id", user_id) \
-            .order("created_at") \
-            .execute()
-
-        history = res.data or []
-    except:
-        history = []
-else:
-    # ❌ ONLY CURRENT CHAT
-    history = get_chat_history(user_id, chat_id)
-
-
-# OPTIONAL: limit memory
-history = history[-20:]
-
-context = "\n".join([f"{m['role']}: {m['content']}" for m in history])
-
-
-# 🚀 MAIN CHAT API (MULTIMODAL)
+# 🚀 MAIN API
 @router.post("/ask")
 def ask(req: ChatRequest, current_user=Depends(require_user)):
 
     user_id = _uid(current_user)
 
-    # ✅ Validate input
     if not req.message and not req.image_url:
         raise HTTPException(status_code=400, detail="Message or image required")
 
     chat_id = req.chat_id or f"chat_{user_id}"
 
-    # ✅ Verify/Create chat
-    verify_or_create_chat(user_id, chat_id, req.title)
-
-    # ✅ Save user input
+    # ✅ SAVE USER INPUT
     user_content = req.message if req.message else "[Image]"
     if req.image_url:
         user_content += f" (Image: {req.image_url})"
 
     save_message(user_id, chat_id, "user", user_content)
 
-    # ✅ Get history
+    # 🔥 MEMORY LOGIC (INSIDE FUNCTION ONLY)
     memory_enabled = current_user.get("memory_enabled", True)
 
-# 🔥 IF MEMORY ON → use ALL chats
-if memory_enabled:
-    try:
-        if supabase:
+    if memory_enabled:
+        try:
             res = supabase.table("messages") \
                 .select("*") \
                 .eq("user_id", user_id) \
@@ -160,23 +95,21 @@ if memory_enabled:
                 .execute()
 
             history = res.data or []
-        else:
+        except:
             history = []
-    except:
-        history = []
-else:
-    # ❌ MEMORY OFF → only current chat
-    history = get_chat_history(user_id, chat_id)
+    else:
+        history = get_chat_history(user_id, chat_id)
 
-context = "\n".join([f"{m['role']}: {m['content']}" for m in history])
+    # limit memory
+    history = history[-20:]
+
+    context = "\n".join([f"{m['role']}: {m['content']}" for m in history])
 
     # ✅ AI RESPONSE
     try:
-        # 🔥 CASE 1: IMAGE PRESENT
         if req.image_url:
             caption = analyze_image(req.image_url)
 
-            # 🔥 IMAGE + TEXT (BEST CASE)
             if req.message:
                 combined_input = f"""
                 Image description: {caption}
@@ -187,12 +120,9 @@ context = "\n".join([f"{m['role']}: {m['content']}" for m in history])
                     reply = smart_route(combined_input, "")
                 else:
                     reply = f"🖼️ {caption}\n\n💬 {req.message}"
-
-            # 🔥 IMAGE ONLY
             else:
                 reply = f"🖼️ Image Analysis:\n{caption}"
 
-        # 🔥 CASE 2: TEXT ONLY
         elif smart_route:
             reply = smart_route(context + "\nuser: " + req.message, "")
         else:
@@ -201,7 +131,6 @@ context = "\n".join([f"{m['role']}: {m['content']}" for m in history])
     except Exception as e:
         reply = f"⚠️ AI error: {str(e)}"
 
-    # ✅ Save assistant response
     save_message(user_id, chat_id, "assistant", reply)
 
     return {
@@ -211,7 +140,7 @@ context = "\n".join([f"{m['role']}: {m['content']}" for m in history])
     }
 
 
-# 🚀 TEST ROUTE
+# ✅ TEST ROUTE
 @router.get("/")
 def test_chat():
     return {"message": "Chat route working ✅"}
