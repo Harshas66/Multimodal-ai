@@ -1,20 +1,21 @@
-from transformers import pipeline
-
-image_pipe = None  # ❗ DO NOT LOAD AT STARTUP
-
+import os
 
 def analyze_image(image_url: str) -> str:
-    global image_pipe
-
     try:
-        # ✅ Lazy load (only first time)
-        if image_pipe is None:
+        # 🔥 If running on Render → skip heavy model
+        if os.getenv("RENDER"):
+            return f"🖼️ Image received: {image_url}. Analysis ready (light mode)."
+
+        # ✅ Local (your system) → use BLIP
+        from transformers import pipeline
+
+        global image_pipe
+        if "image_pipe" not in globals():
             print("🔄 Loading BLIP model...")
             image_pipe = pipeline(
                 "image-to-text",
                 model="Salesforce/blip-image-captioning-base"
             )
-            print("✅ BLIP model loaded")
 
         result = image_pipe(image_url)
 
