@@ -84,24 +84,44 @@ def save_message(user_id, chat_id, role, content):
         print("❌ Save error:", e)
 
 
-# ✅ FETCH HISTORY
-def get_chat_history(user_id, chat_id):
-    if not supabase:
-        return []
+memory_enabled = True
 
+# ✅ Fetch memory setting
+if supabase:
+    try:
+        res = supabase.table("users") \
+            .select("memory_enabled") \
+            .eq("id", user_id) \
+            .execute()
+
+        if res.data:
+            memory_enabled = res.data[0].get("memory_enabled", True)
+    except:
+        pass
+
+
+# 🔥 MEMORY LOGIC
+if memory_enabled:
+    # ✅ ALL chats (global memory)
     try:
         res = supabase.table("messages") \
             .select("*") \
             .eq("user_id", user_id) \
-            .eq("chat_id", chat_id) \
             .order("created_at") \
             .execute()
 
-        return res.data or []
+        history = res.data or []
+    except:
+        history = []
+else:
+    # ❌ ONLY CURRENT CHAT
+    history = get_chat_history(user_id, chat_id)
 
-    except Exception as e:
-        print("❌ History error:", e)
-        return []
+
+# OPTIONAL: limit memory
+history = history[-20:]
+
+context = "\n".join([f"{m['role']}: {m['content']}" for m in history])
 
 
 # 🚀 MAIN CHAT API (MULTIMODAL)
