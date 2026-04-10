@@ -3,21 +3,19 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-
 from utils.image_analyzer import analyze_image
 from utils.supabase_client import supabase
 from security import require_user
 
+# Optional import for smart routing
 try:
     from orchestrator.router import smart_route
-except:
+except ImportError:
     smart_route = None
 
+router = APIRouter()   # No prefix here (we'll add it in main.py)
 
-router = APIRouter()
-
-
-# ✅ REQUEST MODEL
+# Request Model
 class ChatRequest(BaseModel):
     chat_id: Optional[str] = None
     message: Optional[str] = ""
@@ -25,35 +23,14 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     title: Optional[str] = None
 
-
-# ✅ USER ID
+# Get user ID
 def _uid(user: dict) -> str:
     return user.get("id", "test-user")
 
-
-# ✅ GET CHAT HISTORY
-def get_chat_history(user_id, chat_id):
-    if not supabase:
-        return []
-
-    try:
-        res = supabase.table("messages") \
-            .select("*") \
-            .eq("user_id", user_id) \
-            .eq("chat_id", chat_id) \
-            .order("created_at") \
-            .execute()
-
-        return res.data or []
-    except:
-        return []
-
-
-# ✅ SAVE MESSAGE
-def save_message(user_id, chat_id, role, content):
+# Save message helper
+def save_message(user_id: str, chat_id: str, role: str, content: str):
     if not supabase:
         return
-
     try:
         supabase.table("messages").insert({
             "user_id": user_id,
@@ -61,76 +38,64 @@ def save_message(user_id, chat_id, role, content):
             "role": role,
             "content": content
         }).execute()
-    except:
-        pass
+    except Exception:
+        pass  # silent fail in production, you can log it
 
+# Get chat history
+def get_chat_history(user_id: str, chat_id: str):
+    if not supabase:
+        return []
+    try:
+        res = supabase.table("messages") \
+            .select("*") \
+            .eq("user_id", user_id) \
+            .eq("chat_id", chat_id) \
+            .order("created_at") \
+            .execute()
+        return res.data or []
+    except Exception:
+        return []
 
-# 🚀 MAIN API
+# Main endpoint
 @router.post("/ask")
 def ask(req: ChatRequest, current_user=Depends(require_user)):
-
     user_id = _uid(current_user)
 
     if not req.message and not req.image_url:
-        raise HTTPException(status_code=400, detail="Message or image required")
+        raise HTTPException(status_code=400, detail="Message or image_url is required")
 
-    chat_id = req.chat_id or f"chat_{user_id}"
+    # Generate or use chat_id
+    chat_id = req.chat_id or f"chat_{user_id}_{int(__import__('time').time())}"
 
-    # ✅ SAVE USER INPUT
-    user_content = req.message if req.message else "[Image]"
+    # Save user message
+    user_content = req.message or "[Image]"
     if req.image_url:
         user_content += f" (Image: {req.image_url})"
-
+    
     save_message(user_id, chat_id, "user", user_content)
 
-    # 🔥 MEMORY LOGIC (INSIDE FUNCTION ONLY)
-    memory_enabled = current_user.get("memory_enabled", True)
-
-    if memory_enabled:
-        try:
-            res = supabase.table("messages") \
-                .select("*") \
-                .eq("user_id", user_id) \
-                .order("created_at") \
-                .execute()
-
-            history = res.data or []
-        except:
-            history = []
-    else:
-        history = get_chat_history(user_id, chat_id)
-
-    # limit memory
-    history = history[-20:]
+    # Get conversation history (last 20 messages)
+    history = get_chat_history(user_id, chat_id) if current_user.get("memory_enabled", True) else []
+    history = history[-20:]  # limit context
 
     context = "\n".join([f"{m['role']}: {m['content']}" for m in history])
 
-    # ✅ AI RESPONSE
+    # Generate AI response
     try:
         if req.image_url:
             caption = analyze_image(req.image_url)
-
             if req.message:
-                combined_input = f"""
-                Image description: {caption}
-                User question: {req.message}
-                """
-
-                if smart_route:
-                    reply = smart_route(combined_input, "")
-                else:
-                    reply = f"🖼️ {caption}\n\n💬 {req.message}"
+                combined = f"Image description: {caption}\nUser question: {req.message}"
+                reply = smart_route(combined, "") if smart_route else f"🖼️ {caption}\n\n💬 {req.message}"
             else:
                 reply = f"🖼️ Image Analysis:\n{caption}"
-
-        elif smart_route:
-            reply = smart_route(context + "\nuser: " + req.message, "")
         else:
-            reply = f"Echo: {req.message}"
-
+            input_text = context + "\nuser: " + req.message
+            reply = smart_route(input_text, "") if smart_route else f"Echo: {req.message}"
     except Exception as e:
-        reply = f"⚠️ AI error: {str(e)}"
+        reply = f"⚠️ AI processing error: {str(e)}"
 
+    # Save assistant reply
     save_message(user_id, chat_id, "assistant", reply)
 
     return {
@@ -140,7 +105,7 @@ def ask(req: ChatRequest, current_user=Depends(require_user)):
     }
 
 
-# ✅ TEST ROUTE
+# Test route (optional)
 @router.get("/")
 def test_chat():
-    return {"message": "Chat route working ✅"}
+    return {"message": "Chat API is working ✅", "endpoints": ["/ask"]}
