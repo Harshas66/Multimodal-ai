@@ -1,21 +1,20 @@
 from transformers import pipeline
 
-# Load model once (IMPORTANT)
-try:
-    image_pipe = pipeline(
-        "image-to-text",
-        model="Salesforce/blip-image-captioning-base"
-    )
-    print("✅ BLIP model loaded")
-except Exception as e:
-    print("❌ Model load error:", e)
-    image_pipe = None
+image_pipe = None  # ❗ DO NOT LOAD AT STARTUP
 
 
 def analyze_image(image_url: str) -> str:
+    global image_pipe
+
     try:
-        if not image_pipe:
-            return "⚠️ Image model not available"
+        # ✅ Lazy load (only first time)
+        if image_pipe is None:
+            print("🔄 Loading BLIP model...")
+            image_pipe = pipeline(
+                "image-to-text",
+                model="Salesforce/blip-image-captioning-base"
+            )
+            print("✅ BLIP model loaded")
 
         result = image_pipe(image_url)
 
