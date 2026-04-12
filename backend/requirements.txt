@@ -23,3 +23,5 @@ PyJWT
 transformers
 torch
 Pillow
+
+openai
