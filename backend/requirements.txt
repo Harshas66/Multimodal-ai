@@ -24,4 +24,4 @@ transformers
 torch
 Pillow
 
-openai
+openai>=1.0.0
