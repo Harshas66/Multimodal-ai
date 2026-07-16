@@ -1,4 +1,4 @@
-# llm/llama_client.py
+# chat_handler.py
 
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
